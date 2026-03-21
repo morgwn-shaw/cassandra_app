@@ -8,14 +8,14 @@ import {
 
 // --- SUB-COMPONENT: PERSONA BUILDER ---
 const PersonaPanel = () => {
-  const [personas] = useState([
+  const [personas, setPersonas] = useState([
     { name: 'Killian', role: 'Architect', voiceId: 'Kore' },
     { name: 'Katie', role: 'Analyst', voiceId: 'Aoede' },
     { name: 'Marcus', role: 'Fixer', voiceId: 'Fenrir' }
   ]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4">
       <div className="lg:col-span-2 bg-zinc-900/40 border border-zinc-800 p-8 rounded-xl">
         <h2 className="text-xl font-bold uppercase mb-8 flex items-center gap-3">
           <Plus size={20} className="text-[#00ffcc]" /> Create New Forensic Identity
@@ -73,7 +73,7 @@ const SeasonPanel = () => {
   ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in slide-in-from-bottom-4">
       <div className="lg:col-span-4 space-y-6">
         <div className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-xl">
           <h2 className="text-sm font-bold uppercase mb-6 flex items-center gap-2">
@@ -135,7 +135,7 @@ const SourcePanel = () => {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-10">
+    <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {sources.map(s => (
           <div key={s.id} className="p-6 bg-zinc-900/20 border border-zinc-800 rounded-xl hover:border-[#00ffcc]/30 transition-all cursor-pointer">
