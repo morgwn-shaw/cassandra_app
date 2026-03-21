@@ -137,3 +137,21 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# --- CASSANDRA ENGINE: SHADOW STACK IGNORE LIST ---
+
+# 1. FORENSIC SECURITY (Never sync these)
+.env
+.env.local
+persona_vault.json
+season_registry.json
+
+# 2. BACKEND TRACES
+__pycache__/
+debug.log
+engine_bridge.log
+
+# 3. AUDIO ASSETS
+*.mp3
+*.wav
+downloads/
