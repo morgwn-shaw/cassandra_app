@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// The forensic bridge to your PythonAnywhere Node
 const API_BASE = "https://cassandrafiles.pythonanywhere.com/api";
 
 // --- SUB-COMPONENT: PERSONA BUILDER ---
@@ -51,7 +50,7 @@ const PersonaPanel = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4">
       <div className="lg:col-span-2 bg-zinc-900/40 border border-zinc-800 p-8 rounded-xl">
-        <h2 className="text-xl font-bold uppercase mb-8 flex items-center gap-3">
+        <h2 className="text-xl font-bold uppercase mb-8 flex items-center gap-3 text-white">
           <Plus size={20} className="text-[#00ffcc]" /> Create New Forensic Identity
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -60,7 +59,7 @@ const PersonaPanel = () => {
             <input 
               value={formData.name}
               onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm focus:border-[#00ffcc] outline-none" 
+              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none" 
               placeholder="e.g. SIOBHAN" 
             />
           </div>
@@ -69,7 +68,7 @@ const PersonaPanel = () => {
             <select 
               value={formData.role}
               onChange={(e) => setFormData({...formData, role: e.target.value})}
-              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm focus:border-[#00ffcc] outline-none appearance-none"
+              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none appearance-none"
             >
               <option>Forensic Analyst</option>
               <option>Systems Architect</option>
@@ -81,7 +80,7 @@ const PersonaPanel = () => {
             <textarea 
               value={formData.trauma}
               onChange={(e) => setFormData({...formData, trauma: e.target.value})}
-              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm focus:border-[#00ffcc] outline-none h-24" 
+              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none h-24" 
               placeholder="The reason they audit the machine..." 
             />
           </div>
@@ -106,7 +105,7 @@ const PersonaPanel = () => {
             personas.map((p, i) => (
               <div key={i} className="p-4 border border-zinc-800 bg-black/40 rounded hover:border-[#00ffcc]/40 transition-all cursor-pointer group">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-bold uppercase group-hover:text-[#00ffcc]">{p.name}</span>
+                  <span className="text-sm font-bold uppercase text-zinc-300 group-hover:text-[#00ffcc]">{p.name}</span>
                   <span className="text-[8px] px-2 py-0.5 border border-zinc-800 rounded text-zinc-500">{p.role}</span>
                 </div>
                 <div className="text-[10px] text-zinc-600 uppercase tracking-widest">{p.voiceId || 'Kore'}_Link_Active</div>
@@ -124,6 +123,15 @@ const SeasonPanel = () => {
   const [topic, setTopic] = useState('');
   const [season, setSeason] = useState(null);
   const [isReconciling, setIsReconciling] = useState(false);
+
+  const getActInfo = (actNum) => {
+    switch(actNum) {
+      case 1: return { label: "Phase 1: The Signal", color: "text-blue-400", desc: "Establishing the Narrative Mirage" };
+      case 2: return { label: "Phase 2: The Friction", color: "text-orange-400", desc: "Forensic Data & Structural Rot" };
+      case 3: return { label: "Phase 3: The Liquidation", color: "text-red-500", desc: "Systemic Collapse & Scrap Value" };
+      default: return { label: "Unknown Node", color: "text-zinc-500", desc: "Awaiting Data" };
+    }
+  };
 
   const handleReconcile = async () => {
     if (!topic) return;
@@ -145,12 +153,12 @@ const SeasonPanel = () => {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in slide-in-from-bottom-4">
       <div className="lg:col-span-4 space-y-6">
         <div className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-xl">
-          <h2 className="text-sm font-bold uppercase mb-6 flex items-center gap-2">
+          <h2 className="text-sm font-bold uppercase mb-6 flex items-center gap-2 text-white">
             <Target size={16} className="text-[#00ffcc]" /> Macro_Seed
           </h2>
           <div className="space-y-6">
             <input 
-              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm focus:border-[#00ffcc] outline-none"
+              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none"
               placeholder="INPUT SEASON TOPIC..."
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
@@ -160,35 +168,64 @@ const SeasonPanel = () => {
               disabled={isReconciling || !topic}
               className="w-full py-5 bg-[#00ffcc] text-black font-black rounded uppercase text-xs hover:shadow-[0_0_30px_rgba(0,255,204,0.3)] transition-all disabled:opacity-50"
             >
-              {isReconciling ? "Generating Arc..." : "Reconcile_Audit_Arc"}
+              {isReconciling ? "Engaging Showrunner Brain..." : "Reconcile_Audit_Arc"}
             </button>
+          </div>
+        </div>
+
+        <div className="p-6 border border-dashed border-zinc-800 rounded-xl bg-zinc-900/10">
+          <h3 className="text-[10px] text-zinc-500 uppercase font-bold mb-4 tracking-widest">Logic Framework</h3>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="h-1.5 w-1.5 rounded-full bg-blue-400 mt-1" />
+              <div className="text-[9px] text-zinc-400 uppercase">Act 1: The Signal (The Hook)</div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="h-1.5 w-1.5 rounded-full bg-orange-400 mt-1" />
+              <div className="text-[9px] text-zinc-400 uppercase">Act 2: The Friction (The Evidence)</div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="h-1.5 w-1.5 rounded-full bg-red-500 mt-1" />
+              <div className="text-[9px] text-zinc-400 uppercase">Act 3: The Liquidation (The Verdict)</div>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="lg:col-span-8 bg-black/40 border border-zinc-800 rounded-xl overflow-hidden min-h-[400px]">
         <div className="p-6 bg-zinc-900/20 border-b border-zinc-800 flex justify-between items-center">
-          <h2 className="text-xs font-bold uppercase flex items-center gap-2"><Calendar size={14} /> Sequence_Timeline</h2>
-          <span className="text-[9px] text-zinc-600 uppercase tracking-widest">{season ? `ID: ${season.season_id}` : 'Awaiting Input'}</span>
+          <h2 className="text-xs font-bold uppercase flex items-center gap-2 text-zinc-300"><Calendar size={14} /> Sequence_Timeline</h2>
+          <span className="text-[9px] text-[#00ffcc] uppercase tracking-widest font-bold">{season ? `ARCHIVE_ID: ${season.season_id}` : 'Awaiting_Signal'}</span>
         </div>
         <div className="divide-y divide-zinc-900">
           {!season ? (
-            <div className="p-20 text-center text-zinc-800 text-xs italic">Awaiting macro_seed reconstruction...</div>
+            <div className="p-20 flex flex-col items-center justify-center text-center opacity-20">
+              <Layers size={40} className="mb-4" />
+              <div className="text-xs italic uppercase tracking-[0.2em]">Awaiting macro_seed reconstruction...</div>
+            </div>
           ) : (
-            season.timeline.map((ep, i) => (
-              <div key={i} className="p-6 flex items-center justify-between hover:bg-zinc-900/20 transition-colors">
-                <div className="flex gap-6 items-center">
-                  <span className="text-[10px] font-bold text-zinc-700">{ep.episode_id}</span>
-                  <div>
-                    <div className="text-xs font-bold uppercase mb-1">{ep.theme}</div>
-                    <div className="text-[9px] text-zinc-500 uppercase tracking-tighter">Status: {ep.status}</div>
+            season.timeline.map((ep, i) => {
+              const actInfo = getActInfo(ep.act);
+              return (
+                <div key={i} className="p-6 flex items-center justify-between hover:bg-zinc-900/20 transition-colors group">
+                  <div className="flex gap-8 items-center">
+                    <div className="flex flex-col items-center">
+                       <span className="text-[10px] font-bold text-zinc-700">{ep.episode_id}</span>
+                       <div className={`mt-2 h-1 w-6 rounded-full ${ep.status === 'Planned' ? 'bg-[#00ffcc]/40' : 'bg-[#00ffcc]'}`} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold uppercase mb-1 text-zinc-200">{ep.theme}</div>
+                      <div className={`text-[9px] uppercase tracking-tighter font-bold ${actInfo.color}`}>
+                        {actInfo.label} — <span className="text-zinc-500 font-normal">{actInfo.desc}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="hidden md:flex gap-1">
+                    {[1,2,3].map(a => <div key={a} className={`h-1 w-8 rounded-full ${a === ep.act ? 'bg-[#00ffcc]' : 'bg-zinc-800'}`} />)}
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  {[1,2,3].map(a => <div key={a} className={`h-1 w-6 rounded-full ${a === ep.act ? 'bg-[#00ffcc]' : 'bg-zinc-800'}`} />)}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -204,9 +241,9 @@ const SourcePanel = () => {
         <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
           <HardDriveUpload className="text-zinc-600 group-hover:text-[#00ffcc]" />
         </div>
-        <h2 className="text-2xl font-black uppercase tracking-tighter mb-4">Drop Data Fragment</h2>
+        <h2 className="text-2xl font-black uppercase tracking-tighter mb-4 text-white">Drop Data Fragment</h2>
         <p className="text-zinc-500 text-xs max-w-xs mb-8">N=1 Local Encryption Active. No logic leaves this terminal.</p>
-        <button className="px-10 py-4 bg-[#00ffcc] text-black font-black rounded-lg uppercase text-xs shadow-[0_0_30px_rgba(0,255,204,0.1)]">Begin Ingestion</button>
+        <button className="px-10 py-4 bg-[#00ffcc] text-black font-black rounded-lg uppercase text-xs shadow-[0_0_30px_rgba(0,255,204,0.1)] hover:bg-white transition-all">Begin Ingestion</button>
       </div>
     </div>
   );
@@ -251,13 +288,13 @@ const App = () => {
               <div className="h-1.5 w-1.5 rounded-full bg-[#00ffcc] animate-pulse" />
               <span className="text-[8px] uppercase text-zinc-500 font-bold">Node Pulse: Live</span>
             </div>
-            <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-tighter tracking-widest">Connected</div>
+            <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Connected</div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 md:p-12 overflow-y-auto">
+      <main className="flex-1 p-6 md:p-12 overflow-y-auto bg-gradient-to-br from-black to-zinc-950">
         <header className="mb-12 flex justify-between items-start">
           <div>
             <h1 className="text-4xl font-black tracking-tighter uppercase text-white mb-2">
@@ -267,10 +304,10 @@ const App = () => {
           </div>
           <div className="hidden lg:flex gap-4">
             <div className="px-4 py-2 border border-zinc-800 rounded bg-zinc-900/20 text-[9px] uppercase font-bold flex items-center gap-2">
-              <ShieldCheck size={12} /> Privacy: AES-256
+              <ShieldCheck size={12} className="text-[#00ffcc]" /> Privacy: AES-256
             </div>
             <div className="px-4 py-2 border border-zinc-800 rounded bg-zinc-900/20 text-[9px] uppercase font-bold flex items-center gap-2">
-              <Cpu size={12} /> Local Node: Active
+              <Cpu size={12} className="text-[#00ffcc]" /> Local Node: Active
             </div>
           </div>
         </header>
