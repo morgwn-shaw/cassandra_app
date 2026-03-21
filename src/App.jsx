@@ -3,10 +3,11 @@ import {
   User, Layers, HardDriveUpload, Settings, 
   Database, Radio, Play, Cpu, ShieldCheck, 
   Terminal, Search, Target, Calendar, Plus,
-  ChevronRight, RefreshCw, Lock, MessageSquare, FileText, Link
+  ChevronRight, RefreshCw, Lock, MessageSquare, FileText, Link, Trash2, Edit3, X, Check
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
+// This tells your Dashboard where your PythonAnywhere "Engine" lives.
 const API_BASE = "https://cassandrafiles.pythonanywhere.com/api";
 
 // --- SUB-COMPONENT: PERSONA BUILDER ---
@@ -59,7 +60,7 @@ const PersonaPanel = () => {
             <input 
               value={formData.name}
               onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none" 
+              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none placeholder:text-zinc-800" 
               placeholder="e.g. SIOBHAN" 
             />
           </div>
@@ -80,7 +81,7 @@ const PersonaPanel = () => {
             <textarea 
               value={formData.trauma}
               onChange={(e) => setFormData({...formData, trauma: e.target.value})}
-              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none h-24" 
+              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none h-24 placeholder:text-zinc-800" 
               placeholder="The reason they audit the machine..." 
             />
           </div>
@@ -103,12 +104,15 @@ const PersonaPanel = () => {
             <div className="text-[10px] text-zinc-700 animate-pulse uppercase text-center py-8 italic tracking-widest">Syncing with Node...</div>
           ) : (
             personas.map((p, i) => (
-              <div key={i} className="p-4 border border-zinc-800 bg-black/40 rounded hover:border-[#00ffcc]/40 transition-all cursor-pointer group">
+              <div key={i} className="p-4 border border-zinc-800 bg-black/40 rounded hover:border-[#00ffcc]/40 transition-all group relative">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-sm font-bold uppercase text-zinc-300 group-hover:text-[#00ffcc]">{p.name}</span>
                   <span className="text-[8px] px-2 py-0.5 border border-zinc-800 rounded text-zinc-500">{p.role}</span>
                 </div>
                 <div className="text-[10px] text-zinc-600 uppercase tracking-widest">{p.voiceId || 'Kore'}_Link_Active</div>
+                <button className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-red-900 hover:text-red-500 transition-all">
+                  <Trash2 size={12} />
+                </button>
               </div>
             ))
           )}
@@ -123,6 +127,8 @@ const SeasonPanel = () => {
   const [topic, setTopic] = useState('');
   const [season, setSeason] = useState(null);
   const [isReconciling, setIsReconciling] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState('');
 
   const getActInfo = (actNum) => {
     switch(actNum) {
@@ -149,6 +155,14 @@ const SeasonPanel = () => {
     }
   };
 
+  const saveEdit = (id) => {
+    const updatedTimeline = season.timeline.map(ep => 
+      ep.episode_id === id ? { ...ep, theme: editValue } : ep
+    );
+    setSeason({ ...season, timeline: updatedTimeline });
+    setEditingId(null);
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in slide-in-from-bottom-4">
       <div className="lg:col-span-4 space-y-6">
@@ -158,7 +172,7 @@ const SeasonPanel = () => {
           </h2>
           <div className="space-y-6">
             <input 
-              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none"
+              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none placeholder:text-zinc-900"
               placeholder="INPUT SEASON TOPIC..."
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
@@ -173,21 +187,10 @@ const SeasonPanel = () => {
           </div>
         </div>
 
-        <div className="p-6 border border-dashed border-zinc-800 rounded-xl bg-zinc-900/10">
+        <div className="p-6 border border-dashed border-zinc-800 rounded-xl bg-zinc-900/10 opacity-40 grayscale">
           <h3 className="text-[10px] text-zinc-500 uppercase font-bold mb-4 tracking-widest">Logic Framework</h3>
           <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="h-1.5 w-1.5 rounded-full bg-blue-400 mt-1" />
-              <div className="text-[9px] text-zinc-400 uppercase">Act 1: The Signal (The Hook)</div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="h-1.5 w-1.5 rounded-full bg-orange-400 mt-1" />
-              <div className="text-[9px] text-zinc-400 uppercase">Act 2: The Friction (The Evidence)</div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="h-1.5 w-1.5 rounded-full bg-red-500 mt-1" />
-              <div className="text-[9px] text-zinc-400 uppercase">Act 3: The Liquidation (The Verdict)</div>
-            </div>
+             <div className="text-[9px] text-zinc-400 uppercase italic">Awaiting Dify Link...</div>
           </div>
         </div>
       </div>
@@ -206,16 +209,40 @@ const SeasonPanel = () => {
           ) : (
             season.timeline.map((ep, i) => {
               const actInfo = getActInfo(ep.act);
+              const isEditing = editingId === ep.episode_id;
+              
               return (
                 <div key={i} className="p-6 flex items-center justify-between hover:bg-zinc-900/20 transition-colors group">
-                  <div className="flex gap-8 items-center">
+                  <div className="flex gap-8 items-center flex-1">
                     <div className="flex flex-col items-center">
                        <span className="text-[10px] font-bold text-zinc-700">{ep.episode_id}</span>
                        <div className={`mt-2 h-1 w-6 rounded-full ${ep.status === 'Planned' ? 'bg-[#00ffcc]/40' : 'bg-[#00ffcc]'}`} />
                     </div>
-                    <div>
-                      <div className="text-xs font-bold uppercase mb-1 text-zinc-200">{ep.theme}</div>
-                      <div className={`text-[9px] uppercase tracking-tighter font-bold ${actInfo.color}`}>
+                    <div className="flex-1 pr-12">
+                      {isEditing ? (
+                        <div className="flex items-center gap-2">
+                           <input 
+                            autoFocus
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && saveEdit(ep.episode_id)}
+                            className="bg-zinc-800 border border-[#00ffcc] text-xs p-2 rounded w-full outline-none text-white"
+                           />
+                           <button onClick={() => saveEdit(ep.episode_id)} className="text-[#00ffcc]"><Check size={16} /></button>
+                           <button onClick={() => setEditingId(null)} className="text-red-500"><X size={16} /></button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3 group/text">
+                          <div className="text-xs font-bold uppercase text-zinc-200">{ep.theme}</div>
+                          <button 
+                            onClick={() => { setEditingId(ep.episode_id); setEditValue(ep.theme); }}
+                            className="opacity-0 group-hover/text:opacity-100 text-zinc-600 hover:text-[#00ffcc] transition-all"
+                          >
+                            <Edit3 size={10} />
+                          </button>
+                        </div>
+                      )}
+                      <div className={`text-[9px] uppercase tracking-tighter font-bold ${actInfo.color} mt-1`}>
                         {actInfo.label} — <span className="text-zinc-500 font-normal">{actInfo.desc}</span>
                       </div>
                     </div>
@@ -236,13 +263,13 @@ const SeasonPanel = () => {
 // --- SUB-COMPONENT: SOURCE INJECTOR ---
 const SourcePanel = () => {
   return (
-    <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4">
-      <div className="bg-zinc-950 border-2 border-dashed border-zinc-800 rounded-2xl p-20 flex flex-col items-center text-center group hover:border-[#00ffcc]/40 transition-all">
+    <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 text-center">
+      <div className="bg-zinc-950 border-2 border-dashed border-zinc-800 rounded-2xl p-20 flex flex-col items-center justify-center group hover:border-[#00ffcc]/40 transition-all">
         <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
           <HardDriveUpload className="text-zinc-600 group-hover:text-[#00ffcc]" />
         </div>
         <h2 className="text-2xl font-black uppercase tracking-tighter mb-4 text-white">Drop Data Fragment</h2>
-        <p className="text-zinc-500 text-xs max-w-xs mb-8">N=1 Local Encryption Active. No logic leaves this terminal.</p>
+        <p className="text-zinc-500 text-xs max-w-xs mb-8">N=1 Local Encryption Active. Data will be analyzed locally.</p>
         <button className="px-10 py-4 bg-[#00ffcc] text-black font-black rounded-lg uppercase text-xs shadow-[0_0_30px_rgba(0,255,204,0.1)] hover:bg-white transition-all">Begin Ingestion</button>
       </div>
     </div>
@@ -261,9 +288,9 @@ const App = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#050505] text-zinc-300 font-mono flex">
+    <div className="min-h-screen bg-[#050505] text-zinc-300 font-mono flex selection:bg-[#00ffcc] selection:text-black">
       {/* Sidebar Nav */}
-      <div className="w-20 md:w-64 border-r border-zinc-900 flex flex-col bg-black/50 backdrop-blur-xl">
+      <div className="w-20 md:w-64 border-r border-zinc-900 flex flex-col bg-black/50 backdrop-blur-xl z-10">
         <div className="p-8 border-b border-zinc-900 flex items-center gap-4">
           <div className="w-8 h-8 bg-[#00ffcc] rounded flex items-center justify-center text-black font-black">C</div>
           <span className="hidden md:block text-xs font-black tracking-[0.4em] uppercase text-[#00ffcc]">Cassandra</span>
@@ -288,7 +315,7 @@ const App = () => {
               <div className="h-1.5 w-1.5 rounded-full bg-[#00ffcc] animate-pulse" />
               <span className="text-[8px] uppercase text-zinc-500 font-bold">Node Pulse: Live</span>
             </div>
-            <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Connected</div>
+            <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-tighter tracking-widest">Connected</div>
           </div>
         </div>
       </div>
@@ -298,7 +325,7 @@ const App = () => {
         <header className="mb-12 flex justify-between items-start">
           <div>
             <h1 className="text-4xl font-black tracking-tighter uppercase text-white mb-2">
-              {activeTab}_Engine_v1.0
+              {activeTab}_Engine_v1.1
             </h1>
             <p className="text-[10px] text-zinc-500 tracking-[0.5em] uppercase">Status: Terminal_Safe // N=1_Personal_Media</p>
           </div>
