@@ -1,356 +1,277 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  User, Layers, HardDriveUpload, Settings, 
-  Database, Radio, Play, Cpu, ShieldCheck, 
-  Terminal, Search, Target, Calendar, Plus,
-  ChevronRight, RefreshCw, Lock, MessageSquare, FileText, Link, Trash2, Edit3, X, Check
+  User, Layers, HardDriveUpload, Radio, Play, Cpu, ShieldCheck, 
+  Terminal, Plus, ChevronRight, X, Check, Database, Trash2, Zap, Search
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// This tells your Dashboard where your PythonAnywhere "Engine" lives.
-const API_BASE = "https://cassandrafiles.pythonanywhere.com/api";
+const API_BASE = "https://cassandrafiles.pythonanywhere.com/api/v2";
 
-// --- SUB-COMPONENT: PERSONA BUILDER ---
-const PersonaPanel = () => {
-  const [personas, setPersonas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({ name: '', role: 'Forensic Analyst', trauma: '', voiceId: 'Kore' });
-
-  const fetchPersonas = () => {
-    setLoading(true);
-    fetch(`${API_BASE}/persona/list`)
-      .then(res => res.json())
-      .then(data => {
-        setPersonas(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  };
-
-  useEffect(() => { fetchPersonas(); }, []);
-
-  const handleCommit = async () => {
-    if (!formData.name) return;
-    setIsSaving(true);
-    try {
-      const res = await fetch(`${API_BASE}/persona/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      if (res.ok) {
-        setFormData({ name: '', role: 'Forensic Analyst', trauma: '', voiceId: 'Kore' });
-        fetchPersonas();
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4">
-      <div className="lg:col-span-2 bg-zinc-900/40 border border-zinc-800 p-8 rounded-xl">
-        <h2 className="text-xl font-bold uppercase mb-8 flex items-center gap-3 text-white">
-          <Plus size={20} className="text-[#00ffcc]" /> Create New Forensic Identity
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-2">
-            <label className="text-[10px] text-zinc-500 uppercase font-bold">Identity Designation</label>
-            <input 
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none placeholder:text-zinc-800" 
-              placeholder="e.g. SIOBHAN" 
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] text-zinc-500 uppercase font-bold">Operational Role</label>
-            <select 
-              value={formData.role}
-              onChange={(e) => setFormData({...formData, role: e.target.value})}
-              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none appearance-none"
-            >
-              <option>Forensic Analyst</option>
-              <option>Systems Architect</option>
-              <option>Rogue Logic</option>
-            </select>
-          </div>
-          <div className="lg:col-span-2 space-y-2">
-            <label className="text-[10px] text-zinc-500 uppercase font-bold">Origin Trauma / Lore Seed</label>
-            <textarea 
-              value={formData.trauma}
-              onChange={(e) => setFormData({...formData, trauma: e.target.value})}
-              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none h-24 placeholder:text-zinc-800" 
-              placeholder="The reason they audit the machine..." 
-            />
-          </div>
-        </div>
-        <button 
-          onClick={handleCommit}
-          disabled={isSaving || !formData.name}
-          className="mt-8 w-full bg-[#00ffcc] text-black font-black py-5 rounded uppercase tracking-tighter hover:bg-white transition-all shadow-[0_0_20px_rgba(0,255,204,0.2)] disabled:opacity-50"
-        >
-          {isSaving ? "Vaulting Identity..." : "Commit Identity to Vault"}
-        </button>
-      </div>
-
-      <div className="bg-zinc-900/20 border border-zinc-800 p-6 rounded-xl h-fit">
-        <h2 className="text-xs font-bold uppercase mb-6 flex items-center gap-2 text-zinc-400">
-          <Database size={14} /> Identity_Vault
-        </h2>
-        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-          {loading ? (
-            <div className="text-[10px] text-zinc-700 animate-pulse uppercase text-center py-8 italic tracking-widest">Syncing with Node...</div>
-          ) : (
-            personas.map((p, i) => (
-              <div key={i} className="p-4 border border-zinc-800 bg-black/40 rounded hover:border-[#00ffcc]/40 transition-all group relative">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-bold uppercase text-zinc-300 group-hover:text-[#00ffcc]">{p.name}</span>
-                  <span className="text-[8px] px-2 py-0.5 border border-zinc-800 rounded text-zinc-500">{p.role}</span>
-                </div>
-                <div className="text-[10px] text-zinc-600 uppercase tracking-widest">{p.voiceId || 'Kore'}_Link_Active</div>
-                <button className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-red-900 hover:text-red-500 transition-all">
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- SUB-COMPONENT: SEASON ARCHITECT ---
-const SeasonPanel = () => {
-  const [topic, setTopic] = useState('');
-  const [season, setSeason] = useState(null);
-  const [isReconciling, setIsReconciling] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [editValue, setEditValue] = useState('');
-
-  const getActInfo = (actNum) => {
-    switch(actNum) {
-      case 1: return { label: "Phase 1: The Signal", color: "text-blue-400", desc: "Establishing the Narrative Mirage" };
-      case 2: return { label: "Phase 2: The Friction", color: "text-orange-400", desc: "Forensic Data & Structural Rot" };
-      case 3: return { label: "Phase 3: The Liquidation", color: "text-red-500", desc: "Systemic Collapse & Scrap Value" };
-      default: return { label: "Unknown Node", color: "text-zinc-500", desc: "Awaiting Data" };
-    }
-  };
-
-  const handleReconcile = async () => {
-    if (!topic) return;
-    setIsReconciling(true);
-    try {
-      const res = await fetch(`${API_BASE}/season/reconcile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, episodes: 10 })
-      });
-      const data = await res.json();
-      setSeason(data);
-    } finally {
-      setIsReconciling(false);
-    }
-  };
-
-  const saveEdit = (id) => {
-    const updatedTimeline = season.timeline.map(ep => 
-      ep.episode_id === id ? { ...ep, theme: editValue } : ep
-    );
-    setSeason({ ...season, timeline: updatedTimeline });
-    setEditingId(null);
-  };
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in slide-in-from-bottom-4">
-      <div className="lg:col-span-4 space-y-6">
-        <div className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-xl">
-          <h2 className="text-sm font-bold uppercase mb-6 flex items-center gap-2 text-white">
-            <Target size={16} className="text-[#00ffcc]" /> Macro_Seed
-          </h2>
-          <div className="space-y-6">
-            <input 
-              className="w-full bg-black border border-zinc-800 p-4 rounded text-sm text-white focus:border-[#00ffcc] outline-none placeholder:text-zinc-900"
-              placeholder="INPUT SEASON TOPIC..."
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            />
-            <button 
-              onClick={handleReconcile}
-              disabled={isReconciling || !topic}
-              className="w-full py-5 bg-[#00ffcc] text-black font-black rounded uppercase text-xs hover:shadow-[0_0_30px_rgba(0,255,204,0.3)] transition-all disabled:opacity-50"
-            >
-              {isReconciling ? "Engaging Showrunner Brain..." : "Reconcile_Audit_Arc"}
-            </button>
-          </div>
-        </div>
-
-        <div className="p-6 border border-dashed border-zinc-800 rounded-xl bg-zinc-900/10 opacity-40 grayscale">
-          <h3 className="text-[10px] text-zinc-500 uppercase font-bold mb-4 tracking-widest">Logic Framework</h3>
-          <div className="space-y-3">
-             <div className="text-[9px] text-zinc-400 uppercase italic">Awaiting Dify Link...</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="lg:col-span-8 bg-black/40 border border-zinc-800 rounded-xl overflow-hidden min-h-[400px]">
-        <div className="p-6 bg-zinc-900/20 border-b border-zinc-800 flex justify-between items-center">
-          <h2 className="text-xs font-bold uppercase flex items-center gap-2 text-zinc-300"><Calendar size={14} /> Sequence_Timeline</h2>
-          <span className="text-[9px] text-[#00ffcc] uppercase tracking-widest font-bold">{season ? `ARCHIVE_ID: ${season.season_id}` : 'Awaiting_Signal'}</span>
-        </div>
-        <div className="divide-y divide-zinc-900">
-          {!season ? (
-            <div className="p-20 flex flex-col items-center justify-center text-center opacity-20">
-              <Layers size={40} className="mb-4" />
-              <div className="text-xs italic uppercase tracking-[0.2em]">Awaiting macro_seed reconstruction...</div>
-            </div>
-          ) : (
-            season.timeline.map((ep, i) => {
-              const actInfo = getActInfo(ep.act);
-              const isEditing = editingId === ep.episode_id;
-              
-              return (
-                <div key={i} className="p-6 flex items-center justify-between hover:bg-zinc-900/20 transition-colors group">
-                  <div className="flex gap-8 items-center flex-1">
-                    <div className="flex flex-col items-center">
-                       <span className="text-[10px] font-bold text-zinc-700">{ep.episode_id}</span>
-                       <div className={`mt-2 h-1 w-6 rounded-full ${ep.status === 'Planned' ? 'bg-[#00ffcc]/40' : 'bg-[#00ffcc]'}`} />
-                    </div>
-                    <div className="flex-1 pr-12">
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
-                           <input 
-                            autoFocus
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && saveEdit(ep.episode_id)}
-                            className="bg-zinc-800 border border-[#00ffcc] text-xs p-2 rounded w-full outline-none text-white"
-                           />
-                           <button onClick={() => saveEdit(ep.episode_id)} className="text-[#00ffcc]"><Check size={16} /></button>
-                           <button onClick={() => setEditingId(null)} className="text-red-500"><X size={16} /></button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-3 group/text">
-                          <div className="text-xs font-bold uppercase text-zinc-200">{ep.theme}</div>
-                          <button 
-                            onClick={() => { setEditingId(ep.episode_id); setEditValue(ep.theme); }}
-                            className="opacity-0 group-hover/text:opacity-100 text-zinc-600 hover:text-[#00ffcc] transition-all"
-                          >
-                            <Edit3 size={10} />
-                          </button>
-                        </div>
-                      )}
-                      <div className={`text-[9px] uppercase tracking-tighter font-bold ${actInfo.color} mt-1`}>
-                        {actInfo.label} — <span className="text-zinc-500 font-normal">{actInfo.desc}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="hidden md:flex gap-1">
-                    {[1,2,3].map(a => <div key={a} className={`h-1 w-8 rounded-full ${a === ep.act ? 'bg-[#00ffcc]' : 'bg-zinc-800'}`} />)}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- SUB-COMPONENT: SOURCE INJECTOR ---
-const SourcePanel = () => {
-  return (
-    <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 text-center">
-      <div className="bg-zinc-950 border-2 border-dashed border-zinc-800 rounded-2xl p-20 flex flex-col items-center justify-center group hover:border-[#00ffcc]/40 transition-all">
-        <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-          <HardDriveUpload className="text-zinc-600 group-hover:text-[#00ffcc]" />
-        </div>
-        <h2 className="text-2xl font-black uppercase tracking-tighter mb-4 text-white">Drop Data Fragment</h2>
-        <p className="text-zinc-500 text-xs max-w-xs mb-8">N=1 Local Encryption Active. Data will be analyzed locally.</p>
-        <button className="px-10 py-4 bg-[#00ffcc] text-black font-black rounded-lg uppercase text-xs shadow-[0_0_30px_rgba(0,255,204,0.1)] hover:bg-white transition-all">Begin Ingestion</button>
-      </div>
-    </div>
-  );
-};
-
-// --- MAIN APP COMPONENT ---
 const App = () => {
   const [activeTab, setActiveTab] = useState('season');
+  const [seasons, setSeasons] = useState([]);
+  const [activeSeason, setActiveSeason] = useState(null);
+  const [personas, setPersonas] = useState([]);
+  const [showSeasonModal, setShowSeasonModal] = useState(false);
+  const [showPersonaModal, setShowPersonaModal] = useState(false);
+  
+  // Form States
+  const [newSeason, setNewSeason] = useState({ title: '', description: '' });
+  const [newPersona, setNewPersona] = useState({ name: '', role: '', trauma: '', voiceId: 'Marcus_v1' });
 
-  const navItems = [
-    { id: 'season', icon: Layers, label: 'Season' },
-    { id: 'persona', icon: User, label: 'Persona' },
-    { id: 'source', icon: HardDriveUpload, label: 'Inject' },
-    { id: 'settings', icon: Settings, label: 'Nodes' }
-  ];
+  // Initial Data Fetch
+  useEffect(() => {
+    refreshData();
+  }, []);
+
+  const refreshData = async () => {
+    try {
+      const sRes = await fetch(`${API_BASE}/seasons`);
+      const sData = await sRes.json();
+      setSeasons(sData);
+      if (sData.length > 0 && !activeSeason) setActiveSeason(sData[0]);
+
+      const pRes = await fetch(`${API_BASE}/persona/list`);
+      const pData = await pRes.json();
+      setPersonas(pData);
+    } catch (e) {
+      console.error("Signal Lost: API Offline", e);
+    }
+  };
+
+  const handleCreateSeason = async () => {
+    if (!newSeason.title) return;
+    const res = await fetch(`${API_BASE}/seasons/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newSeason)
+    });
+    if (res.ok) {
+      setNewSeason({ title: '', description: '' });
+      setShowSeasonModal(false);
+      refreshData();
+    }
+  };
+
+  const handleCreatePersona = async () => {
+    if (!newPersona.name) return;
+    const res = await fetch(`${API_BASE}/persona/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newPersona)
+    });
+    if (res.ok) {
+      setNewPersona({ name: '', role: '', trauma: '', voiceId: 'Marcus_v1' });
+      setShowPersonaModal(false);
+      refreshData();
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-zinc-300 font-mono flex selection:bg-[#00ffcc] selection:text-black">
-      {/* Sidebar Nav */}
-      <div className="w-20 md:w-64 border-r border-zinc-900 flex flex-col bg-black/50 backdrop-blur-xl z-10">
-        <div className="p-8 border-b border-zinc-900 flex items-center gap-4">
-          <div className="w-8 h-8 bg-[#00ffcc] rounded flex items-center justify-center text-black font-black">C</div>
-          <span className="hidden md:block text-xs font-black tracking-[0.4em] uppercase text-[#00ffcc]">Cassandra</span>
-        </div>
-        
-        <nav className="flex-1 p-4 space-y-2 mt-4">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-4 p-4 rounded-lg transition-all ${activeTab === item.id ? 'bg-[#00ffcc]/10 text-[#00ffcc]' : 'text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/40'}`}
+    <div className="min-h-screen bg-black text-zinc-100 font-mono p-4 lg:p-10">
+      
+      {/* TOP COMMAND BAR */}
+      <header className="mb-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+        <div className="flex items-center gap-6 bg-zinc-900/40 p-5 border border-zinc-800 rounded-lg w-full lg:w-auto shadow-2xl">
+          <Layers className="text-[#00ffcc] animate-pulse" size={28} />
+          <div className="flex-1 min-w-[200px]">
+            <p className="text-[9px] text-zinc-500 uppercase tracking-[0.3em] mb-1">Active_Arc_Selection</p>
+            <select 
+              className="bg-transparent border-none text-lg font-black focus:ring-0 p-0 cursor-pointer text-[#00ffcc] w-full"
+              value={activeSeason?.id || ''}
+              onChange={(e) => {
+                if (e.target.value === 'NEW') setShowSeasonModal(true);
+                else setActiveSeason(seasons.find(s => s.id === e.target.value));
+              }}
             >
-              <item.icon size={20} />
-              <span className="hidden md:block text-[10px] font-bold uppercase tracking-widest">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="p-6 border-t border-zinc-900">
-          <div className="bg-zinc-900/40 p-4 rounded-lg hidden md:block">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-[#00ffcc] animate-pulse" />
-              <span className="text-[8px] uppercase text-zinc-500 font-bold">Node Pulse: Live</span>
-            </div>
-            <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-tighter tracking-widest">Connected</div>
+              {seasons.map(s => <option key={s.id} value={s.id} className="bg-zinc-900">{s.title}</option>)}
+              <option value="NEW" className="text-white">+ INITIALIZE NEW ARC</option>
+            </select>
           </div>
         </div>
-      </div>
-
-      {/* Main Content */}
-      <main className="flex-1 p-6 md:p-12 overflow-y-auto bg-gradient-to-br from-black to-zinc-950">
-        <header className="mb-12 flex justify-between items-start">
-          <div>
-            <h1 className="text-4xl font-black tracking-tighter uppercase text-white mb-2">
-              {activeTab}_Engine_v1.1
-            </h1>
-            <p className="text-[10px] text-zinc-500 tracking-[0.5em] uppercase">Status: Terminal_Safe // N=1_Personal_Media</p>
-          </div>
-          <div className="hidden lg:flex gap-4">
-            <div className="px-4 py-2 border border-zinc-800 rounded bg-zinc-900/20 text-[9px] uppercase font-bold flex items-center gap-2">
-              <ShieldCheck size={12} className="text-[#00ffcc]" /> Privacy: AES-256
-            </div>
-            <div className="px-4 py-2 border border-zinc-800 rounded bg-zinc-900/20 text-[9px] uppercase font-bold flex items-center gap-2">
-              <Cpu size={12} className="text-[#00ffcc]" /> Local Node: Active
-            </div>
-          </div>
-        </header>
-
-        {activeTab === 'persona' && <PersonaPanel />}
-        {activeTab === 'season' && <SeasonPanel />}
-        {activeTab === 'source' && <SourcePanel />}
         
-        <footer className="mt-20 pt-8 border-t border-zinc-900 flex justify-between items-center opacity-30 grayscale hover:grayscale-0 transition-all cursor-default">
-          <div className="flex gap-8 text-[9px] uppercase font-bold tracking-widest">
-            <div className="flex items-center gap-2"><Radio size={12} /> Transmission_Stable</div>
-            <div className="flex items-center gap-2"><Terminal size={12} /> Root_Access_Granted</div>
+        <div className="flex gap-6 opacity-40 text-[9px] uppercase tracking-widest font-bold">
+          <div className="flex items-center gap-2"><Cpu size={14} className="text-[#00ffcc]"/> Node_Status: Active</div>
+          <div className="flex items-center gap-2"><ShieldCheck size={14} className="text-[#00ffcc]"/> Encryption: AES-256</div>
+          <div className="flex items-center gap-2"><Database size={14} className="text-[#00ffcc]"/> DB: SQLITE_SHADOW</div>
+        </div>
+      </header>
+
+      {/* PRIMARY NAVIGATION */}
+      <nav className="flex gap-2 mb-10 bg-zinc-900/20 p-1.5 border border-zinc-900 rounded-xl w-fit">
+        {[
+          { id: 'season', label: 'Season Architect', icon: Layers },
+          { id: 'persona', label: 'Persona Lab', icon: User },
+          { id: 'source', label: 'Source Injector', icon: HardDriveUpload }
+        ].map(tab => (
+          <button 
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-3 px-8 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-zinc-800 text-[#00ffcc] shadow-[0_0_20px_rgba(0,255,204,0.1)]' : 'text-zinc-600 hover:text-zinc-400'}`}
+          >
+            <tab.icon size={14} />
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="grid gap-10">
+        
+        {/* SEASON ARCHITECT VIEW */}
+        {activeTab === 'season' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex justify-between items-end mb-8 border-b border-zinc-900 pb-6">
+              <div>
+                <h2 className="text-2xl font-black uppercase tracking-tighter italic">Blueprint // {activeSeason?.title || 'No Arc Selected'}</h2>
+                <p className="text-[10px] text-zinc-500 mt-2 uppercase">Arc_ID: <span className="text-zinc-300">{activeSeason?.id}</span></p>
+              </div>
+              <button className="flex items-center gap-3 bg-[#00ffcc] text-black px-6 py-3 text-[11px] font-black uppercase hover:brightness-110 active:scale-95 transition-all">
+                <Zap size={16} /> Generate Episodes
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 opacity-30 cursor-not-allowed">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="border border-zinc-800 p-6 rounded-lg bg-zinc-900/10">
+                  <div className="flex justify-between mb-4">
+                    <span className="text-[10px] bg-zinc-800 px-2 py-1 rounded">ACT_{i}</span>
+                    <Layers size={14} />
+                  </div>
+                  <div className="h-4 w-3/4 bg-zinc-800 rounded mb-2"></div>
+                  <div className="h-4 w-1/2 bg-zinc-900 rounded"></div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="text-[9px] uppercase font-bold tracking-widest">©2026_Cassandra_Protocol</div>
-        </footer>
+        )}
+
+        {/* PERSONA LAB VIEW */}
+        {activeTab === 'persona' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <div className="flex justify-between items-center mb-10">
+                <h2 className="text-xl font-black uppercase italic tracking-widest">Active_Persona_Vault</h2>
+                <button 
+                  onClick={() => setShowPersonaModal(true)}
+                  className="flex items-center gap-2 border border-[#00ffcc] text-[#00ffcc] px-6 py-2.5 text-[10px] font-black uppercase hover:bg-[#00ffcc] hover:text-black transition-all"
+                >
+                  <Plus size={14} /> New Identity
+                </button>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+               {personas.map(p => (
+                 <div key={p.id} className="group border border-zinc-800 bg-zinc-900/30 p-6 rounded-lg hover:border-[#00ffcc] transition-all relative overflow-hidden">
+                    <div className="flex items-start justify-between mb-6">
+                      <div className="bg-zinc-800 p-3 rounded-lg text-[#00ffcc]">
+                        <User size={20} />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] text-zinc-500 uppercase">Voice_Core</p>
+                        <p className="text-[10px] font-bold text-zinc-300">{p.voiceId}</p>
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-black uppercase mb-1">{p.name}</h3>
+                    <p className="text-[10px] text-[#00ffcc] uppercase font-bold mb-4 tracking-widest">{p.role}</p>
+                    <p className="text-[11px] text-zinc-500 leading-relaxed italic border-t border-zinc-800 pt-4">"{p.trauma}"</p>
+                 </div>
+               ))}
+             </div>
+          </div>
+        )}
+
+        {/* SOURCE INJECTOR VIEW */}
+        {activeTab === 'source' && (
+          <div className="max-w-2xl mx-auto w-full py-10 text-center animate-in fade-in zoom-in-95 duration-500">
+            <div className="bg-zinc-900/40 border-2 border-dashed border-zinc-800 p-16 rounded-2xl">
+              <HardDriveUpload size={48} className="mx-auto mb-6 text-zinc-700" />
+              <h2 className="text-xl font-black uppercase mb-2">Ingest Signal Data</h2>
+              <p className="text-xs text-zinc-500 mb-8 max-w-sm mx-auto uppercase tracking-tighter">Upload PDF, CSV, or TXT fragments to seed the forensic investigation for <span className="text-[#00ffcc]">{activeSeason?.title}</span>.</p>
+              <button className="bg-zinc-800 text-white px-10 py-4 text-[10px] font-black uppercase hover:bg-zinc-700 transition-all border border-zinc-700">
+                Browse Files
+              </button>
+            </div>
+          </div>
+        )}
+
       </main>
+
+      {/* MODAL: NEW SEASON */}
+      {showSeasonModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 p-10 rounded-2xl max-w-md w-full shadow-[0_0_50px_rgba(0,0,0,1)]">
+            <h2 className="text-2xl font-black uppercase mb-2 italic">Initialize_Arc</h2>
+            <p className="text-xs text-zinc-500 mb-8 uppercase tracking-widest leading-loose">Define a new sector for forensic narrative reconciliation.</p>
+            <div className="space-y-6">
+              <div>
+                <label className="text-[9px] uppercase font-black text-zinc-400 mb-2 block tracking-[0.2em]">Arc Title</label>
+                <input 
+                  autoFocus
+                  className="w-full bg-zinc-900/50 border border-zinc-800 p-4 rounded-lg text-sm focus:border-[#00ffcc] outline-none transition-all"
+                  placeholder="e.g. THE TASMANIAN FLUCTUATION"
+                  value={newSeason.title}
+                  onChange={(e) => setNewSeason({...newSeason, title: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="text-[9px] uppercase font-black text-zinc-400 mb-2 block tracking-[0.2em]">Context_Seed</label>
+                <textarea 
+                  className="w-full bg-zinc-900/50 border border-zinc-800 p-4 rounded-lg text-sm h-24 focus:border-[#00ffcc] outline-none transition-all"
+                  placeholder="Briefly describe the investigative scope..."
+                  value={newSeason.description}
+                  onChange={(e) => setNewSeason({...newSeason, description: e.target.value})}
+                />
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button onClick={() => setShowSeasonModal(false)} className="flex-1 py-4 border border-zinc-800 text-[10px] uppercase font-black hover:bg-zinc-900 transition-all">Abort</button>
+                <button onClick={handleCreateSeason} className="flex-1 py-4 bg-[#00ffcc] text-black text-[10px] uppercase font-black hover:brightness-110 shadow-[0_0_20px_rgba(0,255,204,0.3)]">Establish_Signal</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: NEW PERSONA */}
+      {showPersonaModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 p-10 rounded-2xl max-w-md w-full shadow-[0_0_50px_rgba(0,0,0,1)]">
+            <h2 className="text-2xl font-black uppercase mb-2 italic">Spawn_Identity</h2>
+            <p className="text-xs text-zinc-500 mb-8 uppercase tracking-widest leading-loose">Create a custom mask for the forensic duo.</p>
+            <div className="space-y-4">
+              <input 
+                className="w-full bg-zinc-900/50 border border-zinc-800 p-4 rounded-lg text-sm outline-none focus:border-[#00ffcc]"
+                placeholder="NAME (e.g. SÖREN)"
+                value={newPersona.name}
+                onChange={(e) => setNewPersona({...newPersona, name: e.target.value})}
+              />
+              <input 
+                className="w-full bg-zinc-900/50 border border-zinc-800 p-4 rounded-lg text-sm outline-none focus:border-[#00ffcc]"
+                placeholder="ROLE (e.g. RISK ARCHITECT)"
+                value={newPersona.role}
+                onChange={(e) => setNewPersona({...newPersona, role: e.target.value})}
+              />
+              <textarea 
+                className="w-full bg-zinc-900/50 border border-zinc-800 p-4 rounded-lg text-sm h-24 outline-none focus:border-[#00ffcc]"
+                placeholder="CORE TRAUMA / BIAS..."
+                value={newPersona.trauma}
+                onChange={(e) => setNewPersona({...newPersona, trauma: e.target.value})}
+              />
+              <div className="flex gap-4 pt-4">
+                <button onClick={() => setShowPersonaModal(false)} className="flex-1 py-4 border border-zinc-800 text-[10px] uppercase font-black">Cancel</button>
+                <button onClick={handleCreatePersona} className="flex-1 py-4 bg-[#00ffcc] text-black text-[10px] uppercase font-black">Commit_Identity</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <footer className="mt-20 pt-10 border-t border-zinc-900 flex flex-col md:flex-row justify-between items-center gap-6 opacity-20">
+        <div className="flex items-center gap-6 text-[9px] uppercase font-black tracking-widest">
+          <div className="flex items-center gap-2"><Radio size={12} className="text-[#00ffcc]" /> Signal: Stable</div>
+          <div className="flex items-center gap-2"><Terminal size={12} className="text-[#00ffcc]" /> Protocol: Cassandra_v2.0</div>
+        </div>
+        <p className="text-[9px] uppercase font-black tracking-widest">©2026 // N=1_Personal_Media_Engine</p>
+      </footer>
     </div>
   );
 };
