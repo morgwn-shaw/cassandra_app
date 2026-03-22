@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layers, User, Zap, Plus, Cpu, Database, ShieldCheck, Eye, HardDriveUpload, PlayCircle } from 'lucide-react';
+import { Layers, User, Zap, Plus, Cpu, Database, ShieldCheck, Eye, HardDriveUpload, PlayCircle, Terminal } from 'lucide-react';
 
 const API_BASE = "https://cassandrafiles.pythonanywhere.com/api/v2";
 
@@ -11,10 +11,12 @@ const App = () => {
   const [personas, setPersonas] = useState([]);
   const [vault, setVault] = useState({ shared: [], roadmap: [], memories: [] });
   const [showSeasonModal, setShowSeasonModal] = useState(false);
+  const [showPersonaModal, setShowPersonaModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Form States
   const [newS, setNewS] = useState({ topic: '', episodes: 10, relationship: 'UST' });
+  const [newP, setNewP] = useState({ name: '', role: 'Forensic Analyst', trauma: '', voiceId: 'Kore' });
 
   useEffect(() => { refreshData(); }, []);
   useEffect(() => { if (activeSeason) { fetchEpisodes(activeSeason.id); fetchVault(activeSeason.id); } }, [activeSeason, activeTab]);
@@ -47,6 +49,15 @@ const App = () => {
     setLoading(false); setShowSeasonModal(false); refreshData();
   };
 
+  const handleCreatePersona = async () => {
+    setLoading(true);
+    await fetch(`${API_BASE}/persona/create`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newP)
+    });
+    setLoading(false); setShowPersonaModal(false); refreshData();
+  };
+
   const handleRunAudit = async (epId) => {
     setLoading(true);
     await fetch(`${API_BASE}/episodes/run`, {
@@ -58,9 +69,12 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-[#050505] text-zinc-300 font-mono flex">
-      {/* SIDEBAR */}
-      <nav className="w-64 border-r border-zinc-900 bg-black/50 p-6 flex flex-col gap-8">
-        <div className="text-[#00ffcc] font-black tracking-widest uppercase text-xs mb-4">Cassandra_Engine</div>
+      <nav className="w-64 border-r border-zinc-900 bg-black/50 p-8 flex flex-col gap-8">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-[#00ffcc] rounded flex items-center justify-center text-black font-black">C</div>
+          <span className="text-[10px] font-black tracking-[0.4em] uppercase text-[#00ffcc]">Cassandra</span>
+        </div>
+        
         {['season', 'persona', 'vault', 'source'].map(t => (
           <button key={t} onClick={() => setActiveTab(t)} className={`flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest ${activeTab === t ? 'text-[#00ffcc]' : 'text-zinc-600'}`}>
             {t === 'season' && <Layers size={18}/>}
@@ -70,31 +84,34 @@ const App = () => {
             {t}
           </button>
         ))}
+
         <div className="mt-auto border-t border-zinc-900 pt-6">
-           <p className="text-[8px] text-zinc-600 uppercase mb-2">Active_Arc</p>
-           <select className="bg-zinc-900 text-[#00ffcc] text-[10px] w-full p-2 rounded outline-none" value={activeSeason?.id} onChange={(e) => setActiveSeason(seasons.find(s => s.id === e.target.value))}>
+           <p className="text-[8px] text-zinc-600 uppercase mb-2 ml-1">Active_Arc</p>
+           <select className="bg-zinc-900 text-[#00ffcc] text-[10px] font-bold w-full p-3 rounded outline-none border border-zinc-800" value={activeSeason?.id} onChange={(e) => setActiveSeason(seasons.find(s => s.id === e.target.value))}>
              {seasons.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
            </select>
         </div>
       </nav>
 
-      {/* MAIN */}
-      <main className="flex-1 p-12">
-        <header className="mb-12 flex justify-between">
-           <h1 className="text-3xl font-black uppercase text-white tracking-tighter">{activeTab}_Protocol</h1>
-           <button onClick={() => setShowSeasonModal(true)} className="bg-[#00ffcc] text-black px-6 py-2 text-[10px] font-black uppercase flex items-center gap-2"><Plus size={14}/> New Arc</button>
+      <main className="flex-1 p-12 overflow-y-auto">
+        <header className="mb-12 flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl font-black uppercase text-white tracking-tighter mb-2">{activeTab}_Protocol</h1>
+            <p className="text-[10px] text-zinc-500 tracking-[0.5em] uppercase italic">Status: {loading ? 'Processing_Signal' : 'Terminal_Safe'}</p>
+          </div>
+          <button onClick={() => setShowSeasonModal(true)} className="bg-[#00ffcc] text-black px-8 py-3 text-[10px] font-black uppercase flex items-center gap-2 hover:bg-white transition-all shadow-[0_0_20px_rgba(0,255,204,0.1)]"><Plus size={14}/> New Arc</button>
         </header>
 
         {activeTab === 'season' && activeSeason && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4">
             {episodes.map(ep => (
-              <div key={ep.ep_id} className="border border-zinc-900 p-6 rounded bg-zinc-950/40">
+              <div key={ep.ep_id} className="border border-zinc-900 bg-zinc-950 p-6 rounded-lg hover:border-[#00ffcc] transition-all group">
                 <div className="flex justify-between text-[8px] font-bold mb-4">
-                  <span className="text-zinc-600 uppercase">Act_{ep.act}</span>
-                  <span className="text-[#00ffcc] italic">{ep.wing}</span>
+                  <span className="text-zinc-600 uppercase tracking-widest">Act_{ep.act}</span>
+                  <span className="text-[#00ffcc] italic tracking-tighter">{ep.wing}</span>
                 </div>
                 <h4 className="text-xs font-black uppercase mb-6 leading-tight h-8">{ep.title}</h4>
-                <button onClick={() => handleRunAudit(ep.ep_id)} className="w-full py-3 bg-zinc-900 text-zinc-500 text-[9px] font-black uppercase hover:bg-[#00ffcc] hover:text-black transition-all flex items-center justify-center gap-2">
+                <button onClick={() => handleRunAudit(ep.ep_id)} className="w-full py-4 bg-zinc-900 text-zinc-500 text-[9px] font-black uppercase hover:bg-[#00ffcc] hover:text-black transition-all flex items-center justify-center gap-2">
                   <PlayCircle size={14} /> Start Forensic Audit
                 </button>
               </div>
@@ -102,15 +119,28 @@ const App = () => {
           </div>
         )}
 
-        {activeTab === 'vault' && (
-           <div className="grid grid-cols-2 gap-10">
-              <div className="border border-zinc-900 p-8 rounded bg-zinc-950/50">
-                <h3 className="text-[#00ffcc] text-xs font-black uppercase mb-6 italic tracking-widest">Shared Lore</h3>
-                {vault.shared.map((s, i) => <div key={i} className="text-[10px] text-zinc-500 mb-2 p-2 bg-black/40 border-l border-zinc-800 font-bold">{s}</div>)}
+        {activeTab === 'persona' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in">
+            {personas.map(p => (
+              <div key={p.id} className="border border-zinc-900 bg-zinc-950 p-8 rounded-xl border-l-4 border-l-[#00ffcc]">
+                <p className="text-[9px] text-[#00ffcc] font-black uppercase mb-1 tracking-widest">{p.role}</p>
+                <h3 className="text-xl font-black uppercase mb-6 text-white">{p.name}</h3>
+                <p className="text-[10px] text-zinc-500 italic leading-loose">"{p.trauma}"</p>
               </div>
-              <div className="border border-zinc-900 p-8 rounded bg-zinc-950/50">
-                <h3 className="text-zinc-500 text-xs font-black uppercase mb-6 italic tracking-widest">Harvested Memory</h3>
-                {vault.memories.map((m, i) => <div key={i} className="text-[10px] text-zinc-600 mb-2 border-b border-zinc-900 pb-2"><span className="text-[#00ffcc] mr-2">{m.persona}:</span>{m.snippet}</div>)}
+            ))}
+            <button onClick={() => setShowPersonaModal(true)} className="border-2 border-dashed border-zinc-900 p-10 flex flex-col items-center justify-center gap-4 text-zinc-700 hover:text-[#00ffcc] transition-all"><Plus size={32}/><span className="text-[10px] font-black uppercase">Spawn Identity</span></button>
+          </div>
+        )}
+
+        {activeTab === 'vault' && (
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 animate-in fade-in">
+              <div className="border border-zinc-900 p-10 rounded bg-zinc-950/50">
+                <h3 className="text-[#00ffcc] text-xs font-black uppercase mb-8 italic tracking-widest border-b border-zinc-900 pb-4">Invisible Shared History</h3>
+                {vault.shared.map((s, i) => <div key={i} className="text-[10px] text-zinc-500 mb-3 p-3 bg-black/40 border-l border-zinc-800 font-bold tracking-tight">{s}</div>)}
+              </div>
+              <div className="border border-zinc-900 p-10 rounded bg-zinc-950/50">
+                <h3 className="text-zinc-500 text-xs font-black uppercase mb-8 italic tracking-widest border-b border-zinc-900 pb-4">Harvested Memory</h3>
+                {vault.memories.map((m, i) => <div key={i} className="text-[10px] text-zinc-600 mb-3 border-b border-zinc-900 pb-3 leading-relaxed"><span className="text-[#00ffcc] mr-3 font-black">{m.persona}:</span>{m.snippet}</div>)}
               </div>
            </div>
         )}
@@ -118,21 +148,42 @@ const App = () => {
 
       {/* MODAL: NEW SEASON */}
       {showSeasonModal && (
-        <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center">
-          <div className="bg-zinc-950 border border-zinc-800 p-10 rounded-2xl max-w-md w-full">
-            <h2 className="text-2xl font-black uppercase mb-8 italic">Initialize Arc</h2>
-            <div className="space-y-6">
-              <input className="w-full bg-zinc-900 p-4 border border-zinc-800 outline-none" placeholder="TOPIC" onChange={(e) => setNewS({...newS, topic: e.target.value})} />
-              <div className="space-y-2">
-                <label className="text-[9px] text-zinc-500 uppercase font-bold">Episodes: {newS.episodes}</label>
+        <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-6 backdrop-blur-sm">
+          <div className="bg-zinc-950 border border-zinc-800 p-10 rounded-2xl max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-black uppercase mb-2 italic text-white tracking-tighter">Initialize Arc</h2>
+            <p className="text-[10px] text-zinc-500 mb-10 uppercase tracking-widest">Establish the investigative perimeter.</p>
+            <div className="space-y-8">
+              <input className="w-full bg-zinc-900 p-4 border border-zinc-800 outline-none text-[#00ffcc] font-bold" placeholder="TARGET TOPIC" onChange={(e) => setNewS({...newS, topic: e.target.value})} />
+              <div className="space-y-4">
+                <label className="text-[9px] text-zinc-500 uppercase font-black">Season Length: {newS.episodes} EP</label>
                 <input type="range" min="1" max="15" className="w-full accent-[#00ffcc]" onChange={(e) => setNewS({...newS, episodes: e.target.value})} />
               </div>
-              <select className="w-full bg-zinc-900 p-4 border border-zinc-800 text-[10px]" onChange={(e) => setNewS({...newS, relationship: e.target.value})}>
+              <select className="w-full bg-zinc-900 p-4 border border-zinc-800 text-[10px] font-bold" onChange={(e) => setNewS({...newS, relationship: e.target.value})}>
                 <option value="UST">UNRESOLVED TENSION</option>
                 <option value="FRENEMIES">FRENEMIES</option>
                 <option value="BUDDY_COP">BUDDY COP</option>
               </select>
-              <button onClick={handleCreateSeason} className="w-full py-4 bg-[#00ffcc] text-black font-black uppercase">Establish Signal</button>
+              <div className="flex gap-4 pt-4">
+                <button onClick={() => setShowSeasonModal(false)} className="flex-1 py-4 border border-zinc-800 text-[10px] uppercase font-black text-zinc-500">Abort</button>
+                <button onClick={handleCreateSeason} className="flex-1 py-4 bg-[#00ffcc] text-black font-black uppercase">Initialize</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPersonaModal && (
+        <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-6 backdrop-blur-sm">
+          <div className="bg-zinc-950 border border-zinc-800 p-10 rounded-2xl max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-black uppercase mb-2 italic text-white tracking-tighter">Spawn Identity</h2>
+            <div className="space-y-6 mt-10">
+              <input className="w-full bg-zinc-900 p-4 border border-zinc-800 text-[#00ffcc] font-bold" placeholder="NAME" onChange={(e) => setNewP({...newP, name: e.target.value})} />
+              <input className="w-full bg-zinc-900 p-4 border border-zinc-800 font-bold" placeholder="ROLE" value={newP.role} onChange={(e) => setNewP({...newP, role: e.target.value})} />
+              <textarea className="w-full bg-zinc-900 p-4 border border-zinc-800 h-28 text-sm" placeholder="CORE BIAS / TRAUMA" onChange={(e) => setNewP({...newP, trauma: e.target.value})} />
+              <div className="flex gap-4 pt-4">
+                <button onClick={() => setShowPersonaModal(false)} className="flex-1 py-4 border border-zinc-800 text-[10px] uppercase font-black text-zinc-500">Cancel</button>
+                <button onClick={handleCreatePersona} className="flex-1 py-4 bg-[#00ffcc] text-black font-black uppercase tracking-widest">Commit_DNA</button>
+              </div>
             </div>
           </div>
         </div>
