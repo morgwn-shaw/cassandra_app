@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layers, User, Plus, Cpu, Eye, Trash2, PlayCircle, X, Activity, Database, UserPlus } from 'lucide-react';
+import { Layers, User, Plus, Cpu, Eye, Trash2, PlayCircle, X, Activity, UserPlus, AlertCircle } from 'lucide-react';
 
 const API_BASE = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2";
 
@@ -12,7 +12,6 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [liveStatus, setLiveStatus] = useState({ stage: 'IDLE', last_event: 'Ready' });
   
-  // States for creation
   const [showInlinePersona, setShowInlinePersona] = useState(false);
   const [newS, setNewS] = useState({ topic: '', relationship: 'UST', host_ids: [], episodes_count: 10 });
   const [newP, setNewP] = useState({ name: '', role: 'Auditor', trauma: '' });
@@ -49,7 +48,6 @@ const App = () => {
         });
         const created = await res.json();
         await refreshData();
-        // Auto-select the new host
         setNewS(prev => ({ ...prev, host_ids: [...prev.host_ids, created.id] }));
         setShowInlinePersona(false);
         setNewP({ name: '', role: 'Auditor', trauma: '' });
@@ -63,22 +61,25 @@ const App = () => {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newS)
       });
-      if (!res.ok) throw new Error("AI Rejection - Check JSON Format");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Establishment Failed");
       setShowSeasonModal(false);
+      setNewS({ topic: '', relationship: 'UST', host_ids: [], episodes_count: 10 });
       refreshData();
-    } catch (e) { setLiveStatus({ stage: 'ERROR', last_event: e.message }); }
-    finally { setLoading(false); }
+    } catch (e) { 
+      setLiveStatus({ stage: 'ERROR', last_event: e.message });
+    } finally { setLoading(false); }
   };
 
   return (
     <div className="min-h-screen bg-[#050505] text-zinc-300 font-mono flex">
       <nav className="w-80 border-r border-zinc-900 bg-black/50 p-8 flex flex-col shadow-2xl">
-        <div className="text-[#00ffcc] font-black uppercase text-[10px] mb-8 flex items-center gap-2">
-          <div className="w-2 h-2 bg-[#00ffcc] animate-pulse" /> Shadow_v20.3
+        <div className="text-[#00ffcc] font-black uppercase text-[10px] mb-8 tracking-widest flex items-center gap-2">
+          <div className="w-2 h-2 bg-[#00ffcc] animate-pulse" /> Shadow_v20.4
         </div>
         <div className="flex flex-col gap-2">
           {['season', 'persona', 'vault'].map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} className={`flex items-center gap-4 py-3 px-4 text-[10px] font-bold uppercase rounded ${activeTab === t ? 'text-[#00ffcc] bg-[#00ffcc]/5' : 'text-zinc-600'}`}>
+            <button key={t} onClick={() => setActiveTab(t)} className={`flex items-center gap-4 py-3 px-4 text-[10px] font-bold uppercase rounded ${activeTab === t ? 'text-[#00ffcc] bg-[#00ffcc]/5 border-l-2 border-[#00ffcc]' : 'text-zinc-600'}`}>
               {t === 'season' && <Layers size={16}/>}
               {t === 'persona' && <User size={16}/>}
               {t === 'vault' && <Eye size={16}/>}
@@ -86,26 +87,31 @@ const App = () => {
             </button>
           ))}
         </div>
-        <div className="mt-8 p-5 border border-zinc-900 rounded bg-black/80">
-           <div className={`font-black uppercase text-[10px] ${liveStatus.stage === 'ERROR' ? 'text-red-500' : 'text-[#00ffcc]'}`}>{liveStatus.stage}</div>
-           <div className="text-zinc-500 text-[9px] mt-2 italic">{liveStatus.last_event}</div>
+        
+        {/* TELEMETRY */}
+        <div className={`mt-8 p-5 border rounded bg-black/80 ${liveStatus.stage === 'ERROR' ? 'border-red-500/50' : 'border-zinc-900'}`}>
+           <div className={`font-black uppercase text-[10px] mb-2 ${liveStatus.stage === 'ERROR' ? 'text-red-500' : 'text-[#00ffcc]'}`}>{liveStatus.stage}</div>
+           <div className="text-zinc-500 text-[9px] leading-relaxed italic">{liveStatus.last_event}</div>
         </div>
       </nav>
 
       <main className="flex-1 p-16 overflow-y-auto">
         <header className="mb-16 flex justify-between items-end border-b border-zinc-900 pb-8">
            <h1 className="text-5xl font-black uppercase text-white tracking-tighter italic">{activeTab}</h1>
-           <button onClick={() => setShowSeasonModal(true)} className="bg-[#00ffcc] text-black px-10 py-4 text-[10px] font-black uppercase hover:bg-white transition-all shadow-lg"><Plus size={14}/> Establish Arc</button>
+           <button onClick={() => setShowSeasonModal(true)} className="bg-[#00ffcc] text-black px-10 py-4 text-[10px] font-black uppercase hover:bg-white shadow-lg shadow-[#00ffcc]/20 transition-all"><Plus size={14}/> Establish Arc</button>
         </header>
 
         {activeTab === 'season' && (
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
              {seasons.map((s, i) => (
-               <div key={i} className="border border-zinc-900 bg-zinc-950 rounded relative group hover:border-[#00ffcc]/30 transition-all cursor-pointer flex flex-col overflow-hidden">
-                 <button onClick={async (e) => { e.stopPropagation(); if(window.confirm("Purge?")) { await fetch(`${API_BASE}/season/delete/${s.id}`, {method:'DELETE'}); refreshData(); }}} className="w-full bg-red-950/10 py-2 text-red-500 text-[8px] font-black uppercase hover:bg-red-500 hover:text-white border-b border-zinc-900">Purge_Archive</button>
+               <div key={i} className="border border-zinc-900 bg-zinc-950 rounded relative group hover:border-[#00ffcc]/30 transition-all cursor-pointer overflow-hidden flex flex-col">
+                 <button onClick={async (e) => { e.stopPropagation(); if(window.confirm("Purge?")) { await fetch(`${API_BASE}/season/delete/${s.id}`, {method:'DELETE'}); refreshData(); }}} className="w-full bg-red-950/10 py-2 text-red-500 text-[8px] font-black uppercase border-b border-zinc-900 hover:bg-red-500 hover:text-white">Purge_Archive</button>
                  <div className="p-8" onClick={() => { setActiveSeason(s); setActiveTab('vault'); }}>
                     <h4 className="text-sm font-black text-white mb-2">{s.title}</h4>
                     <p className="text-[9px] text-zinc-600 italic uppercase">{s.relationship} // {s.episodes_count} NODES</p>
+                    <div className="w-full mt-6 py-4 bg-zinc-900 text-[#00ffcc] text-[9px] font-black uppercase flex items-center justify-center gap-3 border border-zinc-800 group-hover:bg-[#00ffcc] group-hover:text-black">
+                        <PlayCircle size={14}/> Open_Vault
+                    </div>
                  </div>
                </div>
              ))}
@@ -113,18 +119,18 @@ const App = () => {
         )}
 
         {activeTab === 'vault' && activeSeason && (
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-in fade-in duration-500">
               <div className="border border-zinc-900 p-12 rounded bg-zinc-950/50">
-                <h2 className="text-2xl font-black text-[#00ffcc] mb-8">{activeSeason.title}</h2>
+                <h2 className="text-2xl font-black text-[#00ffcc] mb-8 italic">{activeSeason.title}</h2>
                 <div className="text-[13px] text-[#ff6666] font-mono leading-relaxed uppercase whitespace-pre-wrap">{activeSeason.lore}</div>
               </div>
               <div className="border border-zinc-900 p-12 rounded bg-zinc-950/50">
-                <h3 className="text-zinc-500 text-xs font-black uppercase mb-8 border-b border-zinc-900 pb-4 italic">3-Act Strategy</h3>
+                <h3 className="text-zinc-500 text-xs font-black uppercase mb-8 border-b border-zinc-900 pb-4 italic tracking-widest">Blueprint</h3>
                 <div className="space-y-6">
                     {(activeSeason.episodes || []).map((ep, idx) => (
-                      <div key={idx} className="border-l-2 border-zinc-800 pl-4 py-2 hover:border-[#00ffcc] transition-all">
+                      <div key={idx} className="border-l-2 border-zinc-800 pl-4 py-2 hover:border-[#00ffcc] transition-all group">
                         <p className="text-[8px] text-[#00ffcc] font-black uppercase mb-1 opacity-50">Node {idx+1} // Act {ep.act}</p>
-                        <h5 className="text-[11px] font-black text-white uppercase">{ep.title}</h5>
+                        <h5 className="text-[11px] font-black text-white uppercase group-hover:text-[#00ffcc]">{ep.title}</h5>
                         <p className="text-[10px] text-zinc-500 italic">{ep.sub_topic}</p>
                       </div>
                     ))}
@@ -134,27 +140,27 @@ const App = () => {
         )}
       </main>
 
-      {/* ARC MODAL */}
+      {/* ESTABLISH MODAL */}
       {showSeasonModal && (
         <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-6 backdrop-blur-md">
           <div className="bg-zinc-950 border border-zinc-800 p-12 rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto relative">
-            <button onClick={() => setShowSeasonModal(false)} className="absolute top-8 right-8 text-zinc-700 hover:text-white"><X size={20}/></button>
-            <h2 className="text-3xl font-black uppercase mb-10 text-white italic tracking-tighter italic">Establish_Arc</h2>
+            <button onClick={() => setShowSeasonModal(false)} className="absolute top-8 right-8 text-zinc-700 hover:text-white transition-all"><X size={20}/></button>
+            <h2 className="text-3xl font-black uppercase mb-10 text-white italic tracking-tighter">Initialize_Arc</h2>
             
-            <div className="space-y-8">
+            <div className="space-y-10">
               <input className="w-full bg-zinc-900 p-5 border border-zinc-800 text-[#00ffcc] font-bold outline-none" placeholder="TOPIC_STRING" value={newS.topic} onChange={(e) => setNewS({...newS, topic: e.target.value})} />
               
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <label className="text-[9px] text-zinc-500 uppercase font-black">Host_DNA_Selection</label>
+                  <label className="text-[9px] text-zinc-500 uppercase font-black">Identities</label>
                   <button onClick={() => setShowInlinePersona(!showInlinePersona)} className="text-[9px] text-[#00ffcc] flex items-center gap-2 hover:underline"><UserPlus size={12}/> {showInlinePersona ? 'Cancel' : 'Spawn New'}</button>
                 </div>
 
                 {showInlinePersona ? (
-                  <div className="p-6 bg-zinc-900 border border-[#00ffcc]/10 space-y-4 animate-in fade-in duration-300">
-                    <input className="w-full bg-black p-3 text-[10px] text-[#00ffcc] border border-zinc-800" placeholder="NAME" value={newP.name} onChange={(e) => setNewP({...newP, name: e.target.value})} />
+                  <div className="p-6 bg-zinc-900 border border-[#00ffcc]/10 space-y-4">
+                    <input className="w-full bg-black p-3 text-[10px] text-[#00ffcc] border border-zinc-800 font-bold" placeholder="NAME" value={newP.name} onChange={(e) => setNewP({...newP, name: e.target.value})} />
                     <input className="w-full bg-black p-3 text-[10px] text-zinc-500 border border-zinc-800" placeholder="CORE_TRAUMA" value={newP.trauma} onChange={(e) => setNewP({...newP, trauma: e.target.value})} />
-                    <button onClick={handleCreatePersona} disabled={loading} className="w-full py-3 bg-[#00ffcc] text-black text-[9px] font-black uppercase">{loading ? 'Simulating...' : 'Commit_DNA'}</button>
+                    <button onClick={handleCreatePersona} className="w-full py-3 bg-[#00ffcc] text-black text-[9px] font-black uppercase">Commit_DNA</button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
@@ -162,7 +168,7 @@ const App = () => {
                       <button key={p.id} onClick={() => {
                         const updated = newS.host_ids.includes(p.id) ? newS.host_ids.filter(id => id !== p.id) : [...newS.host_ids, p.id];
                         setNewS({...newS, host_ids: updated});
-                      }} className={`p-4 text-[10px] font-black uppercase border transition-all text-left ${newS.host_ids.includes(p.id) ? 'border-[#00ffcc] text-[#00ffcc] bg-[#00ffcc]/5' : 'border-zinc-800 text-zinc-700'}`}>
+                      }} className={`p-4 text-[10px] font-black uppercase border transition-all text-left ${newS.host_ids.includes(p.id) ? 'border-[#00ffcc] text-[#00ffcc] bg-[#00ffcc]/5 shadow-[0_0_10px_#00ffcc20]' : 'border-zinc-800 text-zinc-700'}`}>
                         {p.name}
                       </button>
                     ))}
@@ -171,7 +177,7 @@ const App = () => {
               </div>
 
               <div className="space-y-3">
-                <label className="text-[9px] text-zinc-500 uppercase font-black">Dynamic_Selection</label>
+                <label className="text-[9px] text-zinc-500 uppercase font-black">Dynamics</label>
                 <select className="w-full bg-zinc-900 p-5 border border-zinc-800 text-[11px] font-bold text-[#00ffcc]" value={newS.relationship} onChange={(e) => setNewS({...newS, relationship: e.target.value})}>
                   <option value="UST">UNRESOLVED TENSION</option>
                   <option value="FRENEMIES">FRENEMIES</option>
