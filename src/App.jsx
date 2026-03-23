@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layers, User, Zap, Plus, Cpu, Database, Eye, HardDriveUpload, PlayCircle, Loader } from 'lucide-react';
 
-const API_BASE = "https://cassandrafiles.pythonanywhere.com/api/v2";
+const API_BASE = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2";
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('season');
