@@ -58,17 +58,25 @@ const App = () => {
     } catch (e) { setVault({ shared: [], roadmap: [], memories: [] }); }
   };
 
-  const handleCreateSeason = async () => {
-    if (!newS.topic || newS.host_ids.length === 0) return alert("Select a topic and at least one host.");
+const handleCreateSeason = async () => {
+    if (!newS.topic || newS.host_ids.length === 0) return alert("Select a topic and assigned hosts.");
     setLoading(true);
-    await fetch(`${API_BASE}/season/reconcile`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newS)
-    });
-    setLoading(false);
-    setShowSeasonModal(false);
-    setNewS({ topic: '', relationship: 'UST', host_ids: [] });
-    refreshData();
+    try {
+      const res = await fetch(`${API_BASE}/season/reconcile`, {
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newS)
+      });
+      if (!res.ok) throw new Error("API_REJECTED");
+    } catch (e) {
+      console.error("RECON_FAIL", e);
+      alert("Signal Lost: Check PythonAnywhere Error Logs.");
+    } finally {
+      setLoading(false);
+      setShowSeasonModal(false);
+      setNewS({ topic: '', relationship: 'UST', host_ids: [] });
+      refreshData();
+    }
   };
 
   const handleCreatePersona = async () => {
