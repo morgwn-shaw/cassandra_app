@@ -127,4 +127,74 @@ const App = () => {
                                             <div key={idx} className="p-6 bg-[#16191c] border border-slate-800 group hover:border-teal-500 transition-all flex flex-col gap-3 shadow-xl">
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-[9px] text-teal-500 font-black">ACT {ep?.act}</span>
-                                                    <button onClick={() => getBrief(activeItem.id, idx)} className="px-4 py-1.5 bg-slate-800 text-teal-500 text-[9px] font-black uppercase border border-slate-700
+                                                    <button onClick={() => getBrief(activeItem.id, idx)} className="px-4 py-1.5 bg-slate-800 text-teal-500 text-[9px] font-black uppercase border border-slate-700 hover:bg-teal-500 hover:text-black">Run_Node</button>
+                                                </div>
+                                                <h4 className="text-white font-black text-xl uppercase italic tracking-tighter">{ep?.title}</h4>
+                                                <p className="text-[10px] text-slate-600 uppercase leading-tight">{ep?.topic_summary}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="bg-black/40 border border-slate-800 rounded p-10 h-[700px] overflow-y-auto shadow-2xl relative">
+                                        <h4 className="text-teal-500 text-[11px] font-black uppercase mb-8 border-b border-slate-900 pb-4 flex items-center gap-3"><ShieldCheck size={18}/> Production_Brief</h4>
+                                        {activeBrief ? Object.entries(activeBrief?.acts || activeBrief || {}).map(([k, v], i) => (
+                                            <div key={i} className="mb-10">
+                                                <span className="text-[8px] text-teal-400 font-black uppercase mb-3 block opacity-40">{k.replace(/_/g, ' ')}</span>
+                                                <p className="text-[13px] text-slate-400 font-sans leading-relaxed uppercase">"{v}"</p>
+                                            </div>
+                                        )) : <div className="h-full flex items-center justify-center text-slate-800 text-[10px] font-black uppercase tracking-[0.3em] opacity-20">Initialize_Signal</div>}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'persona' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                                <div className="bg-black/40 p-10 border border-slate-800 rounded h-[600px] overflow-y-auto shadow-2xl">
+                                    <h4 className="text-teal-500 text-[10px] font-black uppercase mb-6 italic border-b border-slate-800 pb-2 flex items-center gap-2"><Quote size={14}/> Forensic Dossier</h4>
+                                    <p className="text-[14px] text-slate-400 font-sans leading-relaxed whitespace-pre-wrap uppercase italic">"{activeItem?.archive?.vocal_intro}"</p>
+                                    <hr className="my-6 border-slate-800 opacity-20"/>
+                                    <p className="text-[14px] text-slate-400 font-sans leading-relaxed whitespace-pre-wrap uppercase">{activeItem?.archive?.bio}</p>
+                                </div>
+                                <div className="bg-black/40 p-10 border border-slate-800 rounded h-[600px] overflow-y-auto shadow-2xl">
+                                    <h4 className="text-teal-500 text-[10px] font-black uppercase mb-6 italic border-b border-slate-800 pb-2">DNA_Memories ({(activeItem?.archive?.anecdotes || []).length})</h4>
+                                    {(activeItem?.archive?.anecdotes || []).map((a, i) => <p key={i} className="p-4 bg-white/5 border border-white/5 text-[10px] text-slate-500 italic mb-3 uppercase leading-relaxed hover:text-white transition-all">"{a}"</p>)}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </main>
+
+            {/* PANE 3: COMMAND (FIXED WIDTH) */}
+            <aside className="w-[380px] bg-[#080a0c] p-10 flex flex-col gap-12 border-l border-slate-800 overflow-y-auto shadow-2xl shrink-0">
+                <div className="space-y-6">
+                    <h3 className="text-teal-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border-b border-slate-900 pb-2"><UserPlus size={16}/> Identity_Spawn</h3>
+                    <input className="w-full bg-[#16191c] p-4 border border-slate-800 text-[11px] text-white font-bold outline-none focus:border-teal-500 uppercase" placeholder="NAME" value={newP.name} onChange={(e) => setNewP({...newP, name: e.target.value})} />
+                    <div className="grid grid-cols-2 gap-2">
+                        <select className="bg-[#16191c] p-4 border border-slate-800 text-[10px] text-teal-500 font-black outline-none" value={newP.gender} onChange={(e) => setNewP({...newP, gender: e.target.value})}>
+                            {["Male", "Female", "Non-Binary", "Gender-Fluid"].map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                        <input className="bg-[#16191c] p-4 border border-slate-800 text-[10px] text-slate-500 outline-none uppercase" placeholder="ROLE" value={newP.role} onChange={(e) => setNewP({...newP, role: e.target.value})} />
+                    </div>
+                    <button onClick={() => runAction('/persona/create', newP)} disabled={loading || !newP.name} className="w-full py-4 bg-teal-500 text-black text-[11px] font-black uppercase shadow-2xl hover:bg-white transition-all disabled:opacity-20">COMMIT_DNA</button>
+                </div>
+
+                <div className="space-y-6 border-t border-slate-900 pt-10">
+                    <h3 className="text-teal-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border-b border-slate-900 pb-2"><Database size={16}/> Establish_Season</h3>
+                    <input className="w-full bg-[#16191c] p-4 border border-slate-800 text-[12px] text-white font-bold outline-none focus:border-teal-500 uppercase" placeholder="TOPIC" value={newS.topic} onChange={(e) => setNewS({...newS, topic: e.target.value})} />
+                    <div className="grid grid-cols-2 gap-2 max-h-[180px] overflow-y-auto p-2 border border-slate-800 rounded bg-black/20">
+                        {personas.map(p => (
+                            <button key={p.id} onClick={() => {
+                                const ids = newS.host_ids.includes(p.id) ? newS.host_ids.filter(id => id !== p.id) : [...newS.host_ids, p.id];
+                                setNewS({...newS, host_ids: ids.slice(0, 2)});
+                            }} className={`p-3 text-[8px] font-black border uppercase rounded truncate transition-all ${newS.host_ids.includes(p.id) ? 'border-teal-500 bg-teal-500/10 text-teal-400 shadow-xl' : 'border-slate-800 text-slate-600'}`}>{p.name}</button>
+                        ))}
+                    </div>
+                    <button onClick={() => runAction('/season/reconcile', newS)} disabled={loading || newS.host_ids.length !== 2} className="w-full py-6 bg-teal-500 text-black text-[11px] font-black uppercase shadow-2xl hover:bg-white transition-all disabled:opacity-20">ESTABLISH_SIGNAL</button>
+                </div>
+            </aside>
+        </div>
+    );
+};
+
+export default App;
