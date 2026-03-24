@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Zap, Trash2, Database, Quote, Loader2, Fingerprint, ScrollText, ShieldCheck, Dice5, UserPlus, ShieldAlert, PlayCircle, MessageSquare, History, FastForward, Wifi } from 'lucide-react';
 
+// CORRECTED BASE URL - REMOVED HALLUCINATED "SHADOW-" PREFIX
+const API_BASE = "[https://cassandrafiles.pythonanywhere.com/api/v2](https://cassandrafiles.pythonanywhere.com/api/v2)";
+
 const CONFIG = {
     GENDERS: ["Male", "Female", "Non-Binary", "Gender-Fluid"],
     DYNAMICS: ["UST - High Friction", "Strategic Tension", "Buddy Cop", "Master / Apprentice", "Bitter Rivals", "Frenemies", "Mentor / Mentee", "Unresolved Sexual Tension", "Grudging Mutual Respect", "Shared Trauma Bond"],
-    TRAUMAS: ["Witnessed server farm bleed-out.", "Neural-link betrayal.", "Identity wiped by ghost protocol.", "Exposed data laundering ring.", "Escaped digital cult.", "False flagship conviction."]
+    TRAUMAS: ["Witnessed server farm bleed-out.", "Neural-link betrayal.", "Identity wiped by ghost protocol.", "Exposed data laundering ring.", "Escaped digital cult.", "Neural-scanned without consent."]
 };
 
 const App = () => {
@@ -15,57 +18,49 @@ const App = () => {
     const [seasons, setSeasons] = useState([]);
     const [personas, setPersonas] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [status, setStatus] = useState({ active_engine: 'Standby...' });
+    const [status, setStatus] = useState({ active_engine: 'Initializing...' });
 
-    const [newP, setNewP] = useState({ name: '', role: 'Investigator', trauma: CONFIG.TRAUMAS[0], gender: 'Male' });
+    const [newP, setNewP] = useState({ name: '', role: 'Forensic Investigator', trauma: CONFIG.TRAUMAS[0], gender: 'Male' });
     const [newS, setNewS] = useState({ topic: '', relationship: CONFIG.DYNAMICS[0], host_ids: [], episodes_count: 10 });
 
     useEffect(() => { refreshData(); }, []);
 
     const refreshData = async () => {
         try {
-            const sRes = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/season/list");
+            const sRes = await fetch(`${API_BASE}/season/list`);
             if (sRes.ok) setSeasons(await sRes.json());
-            const pRes = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/persona/list");
+            const pRes = await fetch(`${API_BASE}/persona/list`);
             if (pRes.ok) setPersonas(await pRes.json());
-        } catch (e) { console.error("Database unavailable."); }
-    };
-
-    const testHandshake = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/ping");
-            const data = await res.json();
-            window.alert(`WAKE_UP_SUCCESS: ${data.status}\nEngine: ${data.engine}`);
-            setStatus({ active_engine: data.engine });
-        } catch (e) {
-            window.alert(`WAKE_UP_FAILED: Server is asleep or URL is blocked.\n${e.message}`);
-        } finally { setLoading(false); }
+        } catch (e) { console.error("Sync error"); }
     };
 
     const runAction = async (endpoint, body) => {
-        const url = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2" + endpoint;
         setLoading(true);
         try {
-            const res = await fetch(url, { 
+            const res = await fetch(`${API_BASE}${endpoint}`, { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify(body) 
             });
-            const data = await res.json();
-            if (data.error) {
-                window.alert(`BACKEND_ERROR: ${data.error}`);
+
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                const text = await res.text();
+                throw new Error(`Server returned HTML instead of JSON. Snippet: ${text.substring(0, 100)}`);
             }
+
+            const result = await res.json();
+            if (result.error) window.alert(`BACKEND: ${result.error}`);
             await refreshData();
-        } catch (e) { 
-            window.alert(`SIGNAL_CRASH: ${e.message}\nCheck if the PA Web App is currently "Reloading".`); 
+        } catch (e) {
+            window.alert(`PROTOCOL_ERROR: ${e.message}\n\nTarget URL: ${API_BASE}${endpoint}`);
         } finally { setLoading(false); }
     };
 
     const getBrief = async (seasonId, idx) => {
         setLoading(true); setActiveBrief(null);
         try {
-            const res = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/showrunner/brief", { 
+            const res = await fetch(`${API_BASE}/showrunner/brief`, { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify({ season_id: seasonId, node_index: idx }) 
@@ -74,13 +69,24 @@ const App = () => {
         } finally { setLoading(false); }
     };
 
-    const deleteItem = async (e, type, id) => {
-        e.stopPropagation();
-        await fetch(`https://shadow-cassandrafiles.pythonanywhere.com/api/v2/delete/${type}/${id}`, { method: 'DELETE' });
-        refreshData();
+    const testHandshake = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`${API_BASE}/ping`);
+            const data = await res.json();
+            window.alert(`CONNECTION SUCCESS: ${data.status}\nEngine: ${data.engine}`);
+            setStatus({ active_engine: data.engine });
+        } catch (e) {
+            window.alert(`PING FAILED: ${e.message}\nEnsure PA Web App is RELOADED.`);
+        } finally { setLoading(false); }
     };
 
-    const listData = activeTab === 'season' ? (seasons || []) : (personas || []);
+    const deleteItem = async (e, type, id) => {
+        e.stopPropagation();
+        if (!window.confirm("Purge DNA Record?")) return;
+        await fetch(`${API_BASE}/delete/${type}/${id}`, { method: 'DELETE' });
+        refreshData();
+    };
 
     return (
         <div className="h-screen w-screen font-mono flex overflow-hidden bg-[#0d0f11] text-slate-400 select-none">
@@ -88,11 +94,11 @@ const App = () => {
             {/* COLUMN 1: TELEMETRY */}
             <aside className="w-[320px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shadow-2xl shrink-0">
                 <div className="border-b border-slate-900 pb-6">
-                    <div className="flex items-center gap-3 text-teal-500 font-black text-sm uppercase tracking-widest"><Zap size={16} /> Telemetry_v49.0</div>
+                    <div className="flex items-center gap-3 text-teal-500 font-black text-sm uppercase tracking-widest"><Zap size={16} /> Telemetry_v50.0</div>
                     <div className="text-[10px] text-teal-900 uppercase font-black italic mt-2">{status?.active_engine}</div>
                 </div>
                 <button onClick={testHandshake} className="w-full p-4 border border-teal-900/30 bg-teal-500/5 text-teal-500 text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-teal-500 hover:text-black transition-all rounded shadow-lg">
-                    <Wifi size={14}/> Wake_Up_Server
+                    <Wifi size={14}/> Test_Connection
                 </button>
                 <div className="mt-auto space-y-4 pt-6 border-t border-slate-900">
                     <div className="flex border border-slate-800 rounded overflow-hidden">
@@ -108,22 +114,22 @@ const App = () => {
                 {loading && (
                     <div className="absolute inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center backdrop-blur-xl">
                         <Loader2 className="w-16 h-16 text-teal-500 animate-spin mb-4" />
-                        <p className="text-teal-400 text-xs font-black uppercase tracking-[1em] animate-pulse">Syncing_Neural_Vault...</p>
+                        <p className="text-teal-400 text-xs font-black uppercase animate-pulse italic">Syncing_Neural_Vault...</p>
                     </div>
                 )}
 
                 <div className="flex gap-4 mb-12 border-b border-slate-800 pb-8">
-                    <button onClick={() => {setActiveItem(null); setActiveTab('season');}} className={`px-12 py-4 text-[11px] font-black transition-all ${activeTab === 'season' && !activeItem ? 'bg-teal-500 text-black' : 'bg-slate-800'}`}>SEASONS</button>
-                    <button onClick={() => {setActiveItem(null); setActiveTab('persona');}} className={`px-12 py-4 text-[11px] font-black transition-all ${activeTab === 'persona' && !activeItem ? 'bg-teal-500 text-black' : 'bg-slate-800'}`}>DNA_VAULT</button>
+                    <button onClick={() => {setActiveItem(null); setActiveTab('season');}} className={`px-12 py-4 text-[11px] font-black transition-all ${activeTab === 'season' && !activeItem ? 'bg-teal-500 text-black shadow-[0_0_20px_#2dd4bf30]' : 'bg-slate-800'}`}>SEASONS</button>
+                    <button onClick={() => {setActiveItem(null); setActiveTab('persona');}} className={`px-12 py-4 text-[11px] font-black transition-all ${activeTab === 'persona' && !activeItem ? 'bg-teal-500 text-black shadow-[0_0_20px_#2dd4bf30]' : 'bg-slate-800'}`}>DNA_VAULT</button>
                 </div>
 
                 {!activeItem ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in">
-                        {listData.map((item, i) => (
+                        {((activeTab === 'season' ? seasons : personas) || []).map((item, i) => (
                             <div key={i} className="bg-[#1c1f23] border border-slate-800 p-10 rounded-3xl cursor-pointer hover:border-teal-500 transition-all flex gap-8 items-center shadow-xl group relative" onClick={() => setActiveItem(item)}>
                                 {viewMode === 'god' && <button onClick={(e) => deleteItem(e, activeTab, item.id)} className="absolute top-6 right-6 text-red-900 hover:text-red-500"><Trash2 size={18}/></button>}
                                 <div className="w-24 h-24 rounded-2xl bg-slate-900 overflow-hidden border border-slate-800 shrink-0">
-                                    {item?.portrait ? <img src={item.portrait} className="w-full h-full object-cover grayscale group-hover:grayscale-0" alt="DNA" /> : <Fingerprint className="m-8 text-slate-700" size={32}/>}
+                                    {item?.portrait ? <img src={item.portrait} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" alt="DNA" /> : <Fingerprint className="m-8 text-slate-700" size={32}/>}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h4 className="text-white font-black uppercase text-2xl italic truncate">{item?.title || item?.name}</h4>
@@ -141,20 +147,20 @@ const App = () => {
                         {activeTab === 'season' && (
                             <div className="flex flex-col gap-12">
                                 <div className="bg-teal-950/10 p-12 border border-teal-900/30 rounded-3xl shadow-2xl">
-                                    <h4 className="text-teal-400 text-[11px] font-black uppercase mb-6 flex items-center gap-3 italic tracking-[0.3em]"><ScrollText size={20}/> Grounded_Report</h4>
+                                    <h4 className="text-teal-400 text-[11px] font-black uppercase mb-6 flex items-center gap-3 italic tracking-[0.3em]"><ScrollText size={20}/> Grounded_Investigation</h4>
                                     <p className="text-[19px] text-slate-300 font-sans leading-relaxed uppercase">{activeItem?.summary}</p>
                                 </div>
                                 {viewMode === 'god' && (
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                                         <div className="bg-black/40 p-10 border border-slate-800 rounded-3xl">
-                                            <h4 className="text-teal-500 text-[11px] font-black uppercase mb-6 flex items-center gap-2 italic"><History size={18}/> Shared_Lore_Vault</h4>
-                                            <div className="space-y-3 h-[300px] overflow-y-auto custom-scrollbar pr-4">
-                                                {(activeItem?.lore?.shared_anecdotes || []).map((a, i) => <p key={i} className="text-[11px] text-slate-500 italic uppercase border-l-2 border-slate-900 pl-4 py-1 hover:text-white transition-all">"{a}"</p>)}
+                                            <h4 className="text-teal-500 text-[11px] font-black uppercase mb-6 flex items-center gap-2 italic"><History size={18}/> 20_Act_Shared_Lore</h4>
+                                            <div className="space-y-3 h-[400px] overflow-y-auto custom-scrollbar pr-4">
+                                                {(activeItem?.lore?.shared_anecdotes || ["Syncing..."]).map((a, i) => <p key={i} className="text-[11px] text-slate-500 italic uppercase border-l-2 border-slate-900 pl-6 py-2 hover:text-white transition-all">"{a}"</p>)}
                                             </div>
                                         </div>
-                                        <div className="bg-black/40 p-10 border border-slate-800 rounded-3xl">
-                                            <h4 className="text-teal-400 text-[11px] font-black uppercase mb-6 flex items-center gap-2 italic"><FastForward size={18}/> Seasonal_Evolution</h4>
-                                            <p className="text-[15px] text-slate-400 uppercase leading-relaxed font-sans">{activeItem?.lore?.future_lore}</p>
+                                        <div className="bg-black/40 p-10 border border-slate-800 rounded-3xl shadow-inner">
+                                            <h4 className="text-teal-400 text-[11px] font-black uppercase mb-6 flex items-center gap-2 italic"><FastForward size={18}/> Future_Roadmap</h4>
+                                            <p className="text-[15px] text-slate-400 font-sans bg-[#1c1f23]/50 p-8 rounded-xl border border-slate-800/50 italic leading-snug">{activeItem?.lore?.future_lore || "No roadmap found."}</p>
                                         </div>
                                     </div>
                                 )}
@@ -173,24 +179,23 @@ const App = () => {
                                     </div>
                                     <div className="bg-black/60 border border-slate-800 rounded-3xl p-12 h-[900px] overflow-y-auto shadow-2xl relative">
                                         <h4 className="text-teal-500 text-[12px] font-black uppercase mb-10 border-b border-slate-900 pb-6">Production_Brief</h4>
-                                        {activeBrief?.acts ? Object.entries(activeBrief.acts).map(([k, v], i) => (
+                                        {activeBrief && activeBrief.acts ? Object.entries(activeBrief.acts).map(([k, v], i) => (
                                             <div key={i} className="mb-14 animate-in slide-in-from-right-4">
                                                 <span className="text-[11px] text-teal-400 font-black uppercase mb-5 block opacity-50 tracking-[0.4em]">{k.replace(/_/g, ' ')}</span>
                                                 <p className="text-[17px] text-slate-400 font-sans leading-relaxed uppercase selection:bg-teal-500/20 italic">"{v}"</p>
                                             </div>
-                                        )) : <div className="h-full flex items-center justify-center text-slate-800 text-xs font-black uppercase tracking-[0.6em] opacity-30 italic text-center">Initialize_Node_Sync</div>}
+                                        )) : <div className="h-full flex items-center justify-center text-slate-800 text-xs font-black uppercase tracking-[0.6em] opacity-20 italic text-center">Initialize_Node_Sync</div>}
                                     </div>
                                 </div>
                             </div>
                         )}
-                        {/* PERSONA DETAIL (Same as v43.5) */}
                         {activeTab === 'persona' && (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-in slide-in-from-bottom-10">
-                                <div className="bg-black/40 p-12 border border-slate-800 rounded-3xl shadow-2xl h-[750px] overflow-y-auto custom-scrollbar">
+                                <div className="bg-black/40 p-12 border border-slate-800 rounded-3xl h-[750px] overflow-y-auto custom-scrollbar">
                                     <h4 className="text-teal-500 text-[12px] font-black uppercase mb-8 italic border-b border-slate-800 pb-4 flex items-center gap-3 tracking-widest"><Quote size={20}/> Forensic Dossier</h4>
                                     <p className="text-[16px] text-slate-300 font-sans leading-relaxed whitespace-pre-wrap uppercase tracking-wide">{activeItem?.archive?.bio}</p>
                                 </div>
-                                <div className="bg-black/40 p-12 border border-slate-800 rounded-3xl shadow-2xl h-[750px] overflow-y-auto custom-scrollbar">
+                                <div className="bg-black/40 p-12 border border-slate-800 rounded-3xl h-[750px] overflow-y-auto custom-scrollbar">
                                     <h4 className="text-teal-500 text-[12px] font-black uppercase mb-8 italic border-b border-slate-800 pb-4 tracking-widest">DNA_Memories ({(activeItem?.archive?.anecdotes || []).length})</h4>
                                     {(activeItem?.archive?.anecdotes || []).map((a, i) => <p key={i} className="p-6 bg-white/5 border border-white/5 text-[12px] text-slate-500 italic mb-5 uppercase leading-relaxed hover:text-white hover:bg-teal-500/10 transition-all rounded-xl">"{a}"</p>)}
                                 </div>
@@ -204,7 +209,7 @@ const App = () => {
             <aside className="w-[420px] bg-[#0b0c0e] p-12 flex flex-col gap-14 border-l border-slate-800 overflow-y-auto shadow-2xl shrink-0">
                 <div className="space-y-8">
                     <h3 className="text-teal-400 text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3 border-b border-slate-900 pb-4"><UserPlus size={20}/> Identity_Spawn</h3>
-                    <input className="w-full bg-[#1c1f23] p-6 border border-slate-800 text-sm text-white font-bold outline-none uppercase shadow-inner" placeholder="NAME" value={newP.name} onChange={(e) => setNewP({...newP, name: e.target.value})} />
+                    <input className="w-full bg-[#1c1f23] p-6 border border-slate-800 text-sm text-white font-bold outline-none uppercase shadow-inner focus:border-teal-500" placeholder="NAME" value={newP.name} onChange={(e) => setNewP({...newP, name: e.target.value})} />
                     <div className="grid grid-cols-2 gap-4">
                         <select className="bg-[#1c1f23] p-6 border border-slate-800 text-xs text-teal-500 font-black outline-none cursor-pointer" value={newP.gender} onChange={(e) => setNewP({...newP, gender: e.target.value})}>{CONFIG.GENDERS.map(g => <option key={g}>{g}</option>)}</select>
                         <input className="bg-[#1c1f23] p-6 border border-slate-800 text-xs text-slate-500 outline-none uppercase shadow-inner" placeholder="ROLE" value={newP.role} onChange={(e) => setNewP({...newP, role: e.target.value})} />
@@ -218,13 +223,13 @@ const App = () => {
                 <div className="space-y-8 border-t border-slate-900 pt-14">
                     <h3 className="text-teal-400 text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3 border-b border-slate-900 pb-4"><Database size={20}/> Establish_Season</h3>
                     <input className="w-full bg-[#1c1f23] p-6 border border-slate-800 text-sm text-white font-bold outline-none focus:border-teal-500 uppercase shadow-inner" placeholder="TOPIC" value={newS.topic} onChange={(e) => setNewS({...newS, topic: e.target.value})} />
-                    <select className="w-full bg-[#1c1f23] p-6 border border-slate-800 text-xs text-teal-400 font-bold" value={newS.relationship} onChange={(e) => setNewS({...newS, relationship: e.target.value})}>{CONFIG.DYNAMICS.map(d => <option key={d} value={d}>{d}</option>)}</select>
+                    <select className="w-full bg-[#1c1f23] p-6 border border-slate-800 text-xs text-teal-400 font-bold cursor-pointer" value={newS.relationship} onChange={(e) => setNewS({...newS, relationship: e.target.value})}>{CONFIG.DYNAMICS.map(d => <option key={d}>{d}</option>)}</select>
                     <div className="grid grid-cols-2 gap-3 max-h-[220px] overflow-y-auto p-4 border border-slate-800 rounded-xl bg-black/40 custom-scrollbar shadow-inner">
                         {(personas || []).map(p => (
                             <button key={p.id} onClick={() => {
                                 const ids = newS.host_ids.includes(p.id) ? newS.host_ids.filter(id => id !== p.id) : [...newS.host_ids, p.id];
                                 setNewS({...newS, host_ids: ids.slice(0, 2)});
-                            }} className={`p-4 text-[10px] font-black border uppercase rounded-lg truncate transition-all ${newS.host_ids.includes(p.id) ? 'border-teal-500 bg-teal-500/10 text-teal-400 shadow-xl' : 'border-slate-800 text-slate-600'}`}>{p.name}</button>
+                            }} className={`p-4 text-[10px] font-black border uppercase rounded-lg truncate transition-all ${newS.host_ids.includes(p.id) ? 'border-teal-500 bg-teal-500/10 text-teal-400 shadow-xl' : 'border-slate-800 text-slate-600 hover:border-slate-600'}`}>{p.name}</button>
                         ))}
                     </div>
                     <div className="space-y-4">
