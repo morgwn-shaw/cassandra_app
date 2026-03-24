@@ -3,6 +3,12 @@ import { Zap, Activity, Trash2, Database, Quote, Brain, Loader2, Fingerprint, Sc
 
 const API_BASE = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2";
 
+const CONFIG = {
+    GENDERS: ["Male", "Female", "Non-Binary", "Gender-Fluid"],
+    DYNAMICS: ["UST - High Friction", "Strategic Tension", "Buddy Cop", "Master / Apprentice", "Bitter Rivals", "Frenemies", "Mentor / Mentee", "Unresolved Sexual Tension"],
+    TRAUMAS: ["Witnessed server farm bleed-out.", "Neural-link betrayal.", "Identity wiped by ghost protocol.", "Exposed data laundering ring.", "Escaped digital cult."]
+};
+
 const App = () => {
     const [activeTab, setActiveTab] = useState('season');
     const [activeItem, setActiveItem] = useState(null);
@@ -11,10 +17,10 @@ const App = () => {
     const [seasons, setSeasons] = useState([]);
     const [personas, setPersonas] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [status, setStatus] = useState({ stage: 'IDLE', history: [] });
+    const [status, setStatus] = useState({ stage: 'IDLE', history: [], active_engine: 'Initializing...' });
 
-    const [newP, setNewP] = useState({ name: '', role: 'Forensic Investigator', trauma: 'Classified', gender: 'Male' });
-    const [newS, setNewS] = useState({ topic: '', relationship: 'UST - High Friction', host_ids: [], episodes_count: 10 });
+    const [newP, setNewP] = useState({ name: '', role: 'Forensic Investigator', trauma: CONFIG.TRAUMAS[0], gender: 'Male' });
+    const [newS, setNewS] = useState({ topic: '', relationship: CONFIG.DYNAMICS[0], host_ids: [], episodes_count: 10 });
 
     useEffect(() => {
         refreshData();
@@ -72,10 +78,10 @@ const App = () => {
     return (
         <div className="h-screen w-screen font-mono flex overflow-hidden bg-[#0d0f11] text-slate-400">
             
-            {/* COLUMN 1: TELEMETRY */}
+            {/* COLUMN 1: TELEMETRY (WHITE & BOLD ERRORS) */}
             <aside className="w-[320px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shadow-2xl shrink-0">
                 <div className="border-b border-slate-900 pb-6">
-                    <div className="flex items-center gap-3 text-teal-500 font-black text-sm uppercase tracking-widest"><Zap size={16} /> Telemetry_v43.0</div>
+                    <div className="flex items-center gap-3 text-teal-500 font-black text-sm uppercase tracking-widest"><Zap size={16} /> Telemetry_v43.1</div>
                     <div className="text-[10px] text-teal-900 uppercase font-black italic mt-2">{status.active_engine}</div>
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar">
@@ -94,17 +100,17 @@ const App = () => {
             </aside>
 
             {/* COLUMN 2: WORKSPACE */}
-            <main className="flex-1 flex flex-col p-12 overflow-y-auto relative bg-[#121416]">
+            <main className="flex-1 flex flex-col p-12 overflow-y-auto relative bg-[#121416] min-w-[800px]">
                 {loading && (
                     <div className="absolute inset-0 bg-black/80 z-[100] flex flex-col items-center justify-center backdrop-blur-md">
                         <Loader2 className="w-16 h-16 text-teal-500 animate-spin mb-4" />
-                        <p className="text-teal-400 text-xs font-black uppercase tracking-[0.8em] animate-pulse italic">Synthesizing_Grounded_Apex...</p>
+                        <p className="text-teal-400 text-xs font-black uppercase tracking-[0.8em] animate-pulse italic">Synthesizing_Apex_Data...</p>
                     </div>
                 )}
 
                 <div className="flex gap-4 mb-12 border-b border-slate-800 pb-8">
-                    <button onClick={() => {setActiveItem(null); setActiveBrief(null); setActiveScript(null); setActiveTab('season');}} className={`px-12 py-4 text-[11px] font-black transition-all shadow-2xl ${activeTab === 'season' && !activeItem ? 'bg-teal-500 text-black shadow-teal-500/20' : 'bg-slate-800'}`}>SEASONS</button>
-                    <button onClick={() => {setActiveItem(null); setActiveBrief(null); setActiveScript(null); setActiveTab('persona');}} className={`px-12 py-4 text-[11px] font-black transition-all shadow-2xl ${activeTab === 'persona' && !activeItem ? 'bg-teal-500 text-black shadow-teal-500/20' : 'bg-slate-800'}`}>PERSONAS</button>
+                    <button onClick={() => {setActiveItem(null); setActiveBrief(null); setActiveScript(null); setActiveTab('season');}} className={`px-12 py-4 text-[11px] font-black transition-all ${activeTab === 'season' && !activeItem ? 'bg-teal-500 text-black' : 'bg-slate-800'}`}>SEASONS</button>
+                    <button onClick={() => {setActiveItem(null); setActiveBrief(null); setActiveScript(null); setActiveTab('persona');}} className={`px-12 py-4 text-[11px] font-black transition-all ${activeTab === 'persona' && !activeItem ? 'bg-teal-500 text-black' : 'bg-slate-800'}`}>DNA_VAULT</button>
                 </div>
 
                 {!activeItem ? (
@@ -116,7 +122,7 @@ const App = () => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h4 className="text-white font-black uppercase text-xl italic tracking-tighter truncate">{item?.title || item?.name}</h4>
-                                    <p className="text-[12px] text-teal-500 uppercase font-black opacity-60 tracking-[0.2em]">{item?.relationship || item?.role}</p>
+                                    <p className="text-[10px] text-teal-500 uppercase font-black opacity-60 truncate">{item?.relationship || item?.role}</p>
                                 </div>
                             </div>
                         ))}
@@ -125,7 +131,7 @@ const App = () => {
                     <div className="animate-in slide-in-from-bottom-6 duration-500 space-y-12">
                         <div className="flex justify-between items-end border-b border-slate-800 pb-10">
                             <h2 className="text-7xl font-black text-white uppercase italic tracking-tighter">{activeItem?.title || activeItem?.name}</h2>
-                            <button onClick={() => {setActiveItem(null); setActiveBrief(null); setActiveScript(null);}} className="bg-teal-500 text-black px-12 py-4 text-xs font-black shadow-2xl hover:bg-white transition-all">RETURN</button>
+                            <button onClick={() => {setActiveItem(null); setActiveBrief(null); setActiveScript(null);}} className="bg-teal-500 text-black px-12 py-4 text-xs font-black">RETURN</button>
                         </div>
 
                         {activeTab === 'season' && (
@@ -136,7 +142,7 @@ const App = () => {
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
                                     <div className="space-y-6">
-                                        <h4 className="text-teal-500 text-[11px] font-black uppercase italic border-b border-slate-800 pb-4">Investigative_Nodes</h4>
+                                        <h4 className="text-teal-500 text-[11px] font-black uppercase italic border-b border-slate-800 pb-4">Grounded_Nodes</h4>
                                         {(activeItem?.episodes || []).map((ep, idx) => (
                                             <div key={idx} className="p-8 bg-[#1c1f23] border border-slate-800 group hover:border-teal-500 transition-all flex flex-col gap-4 shadow-xl rounded-xl">
                                                 <div className="flex justify-between items-center">
@@ -173,38 +179,51 @@ const App = () => {
                                 </div>
                             </div>
                         )}
-                        {/* PERSONA DETAIL VIEW SAME AS v36.5 */}
+
+                        {activeTab === 'persona' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                                <div className="bg-black/40 p-10 border border-slate-800 rounded shadow-2xl h-[600px] overflow-y-auto custom-scrollbar">
+                                    <h4 className="text-teal-500 text-[10px] font-black uppercase mb-6 italic border-b border-slate-800 pb-2 flex items-center gap-2"><Quote size={14}/> Forensic Dossier</h4>
+                                    <p className="text-[14px] text-slate-400 font-sans leading-relaxed whitespace-pre-wrap uppercase italic">"{activeItem?.archive?.vocal_intro}"</p>
+                                    <hr className="my-6 border-slate-800 opacity-20"/>
+                                    <p className="text-[14px] text-slate-400 font-sans leading-relaxed whitespace-pre-wrap uppercase">{activeItem?.archive?.bio}</p>
+                                </div>
+                                <div className="bg-black/40 p-10 border border-slate-800 rounded shadow-2xl h-[600px] overflow-y-auto custom-scrollbar">
+                                    <h4 className="text-teal-500 text-[10px] font-black uppercase mb-6 italic border-b border-slate-800 pb-2">DNA_Memories ({(activeItem?.archive?.anecdotes || []).length})</h4>
+                                    {(activeItem?.archive?.anecdotes || []).map((a, i) => <p key={i} className="p-4 bg-white/5 border border-white/5 text-[10px] text-slate-500 italic mb-3 uppercase leading-relaxed hover:text-white transition-all">"{a}"</p>)}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </main>
 
-            {/* COLUMN 3: COMMAND */}
+            {/* COLUMN 3: COMMAND (RIGHT) */}
             <aside className="w-[420px] bg-[#0b0c0e] p-12 flex flex-col gap-14 border-l border-slate-800 overflow-y-auto shadow-2xl shrink-0">
-                {/* IDENTITY SPAWN & ESTABLISH SEASON MODULES FROM v42.0 */}
                 <div className="space-y-8">
                     <h3 className="text-teal-400 text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3 border-b border-slate-900 pb-4"><UserPlus size={20}/> Identity_Spawn</h3>
-                    <input className="w-full bg-[#1c1f23] p-6 border border-slate-800 text-sm text-white font-bold outline-none uppercase" placeholder="NAME" value={newP.name} onChange={(e) => setNewP({...newP, name: e.target.value})} />
+                    <input className="w-full bg-[#1c1f23] p-5 border border-slate-800 text-sm text-white font-bold outline-none uppercase" placeholder="NAME" value={newP.name} onChange={(e) => setNewP({...newP, name: e.target.value})} />
                     <div className="grid grid-cols-2 gap-4">
-                        <select className="bg-[#1c1f23] p-6 border border-slate-800 text-xs text-teal-500 font-black outline-none" value={newP.gender} onChange={(e) => setNewP({...newP, gender: e.target.value})}>{CONFIG.GENDERS.map(g => <option key={g} value={g}>{g}</option>)}</select>
-                        <input className="bg-[#1c1f23] p-6 border border-slate-800 text-xs text-slate-500 outline-none uppercase" placeholder="ROLE" value={newP.role} onChange={(e) => setNewP({...newP, role: e.target.value})} />
+                        <select className="bg-[#1c1f23] p-5 border border-slate-800 text-xs text-teal-500 font-black outline-none" value={newP.gender} onChange={(e) => setNewP({...newP, gender: e.target.value})}>{CONFIG.GENDERS.map(g => <option key={g} value={g}>{g}</option>)}</select>
+                        <input className="bg-[#1c1f23] p-5 border border-slate-800 text-xs text-slate-500 outline-none uppercase" placeholder="ROLE" value={newP.role} onChange={(e) => setNewP({...newP, role: e.target.value})} />
                     </div>
                     <div className="relative">
                         <input className="w-full bg-[#1c1f23] p-6 border border-slate-800 text-xs text-slate-500 outline-none uppercase pr-16" placeholder="CORE_TRAUMA" value={newP.trauma} onChange={(e) => setNewP({...newP, trauma: e.target.value})} />
                         <button onClick={() => setNewP({...newP, trauma: CONFIG.TRAUMAS[Math.floor(Math.random() * CONFIG.TRAUMAS.length)]})} className="absolute right-5 top-5 text-slate-700 hover:text-teal-500 transition-all"><Dice5 size={28}/></button>
                     </div>
-                    <button onClick={() => runAction('/persona/create', newP)} disabled={loading || !newP.name} className="w-full py-6 bg-teal-500 text-black text-xs font-black uppercase shadow-2xl hover:bg-white transition-all">COMMIT_DNA</button>
+                    <button onClick={() => runAction('/persona/create', newP)} disabled={loading || !newP.name} className="w-full py-5 bg-teal-500 text-black text-xs font-black uppercase shadow-2xl hover:bg-white transition-all">COMMIT_DNA</button>
                 </div>
 
                 <div className="space-y-8 border-t border-slate-900 pt-14">
                     <h3 className="text-teal-400 text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3 border-b border-slate-900 pb-4"><Database size={20}/> Establish_Season</h3>
-                    <input className="w-full bg-[#1c1f23] p-6 border border-slate-800 text-sm text-white font-bold outline-none uppercase shadow-inner" placeholder="TOPIC" value={newS.topic} onChange={(e) => setNewS({...newS, topic: e.target.value})} />
+                    <input className="w-full bg-[#1c1f23] p-6 border border-slate-800 text-sm text-white font-bold outline-none focus:border-teal-500 uppercase shadow-inner" placeholder="TOPIC" value={newS.topic} onChange={(e) => setNewS({...newS, topic: e.target.value})} />
                     <select className="w-full bg-[#1c1f23] p-6 border border-slate-800 text-xs text-teal-400 font-bold shadow-inner" value={newS.relationship} onChange={(e) => setNewS({...newS, relationship: e.target.value})}>{CONFIG.DYNAMICS.map(d => <option key={d} value={d}>{d}</option>)}</select>
                     <div className="grid grid-cols-2 gap-3 max-h-[220px] overflow-y-auto p-4 border border-slate-800 rounded-xl bg-black/40 custom-scrollbar shadow-inner">
                         {personas.map(p => (
                             <button key={p.id} onClick={() => {
                                 const ids = newS.host_ids.includes(p.id) ? newS.host_ids.filter(id => id !== p.id) : [...newS.host_ids, p.id];
                                 setNewS({...newS, host_ids: ids.slice(0, 2)});
-                            }} className={`p-4 text-[10px] font-black border uppercase rounded-lg truncate transition-all ${newS.host_ids.includes(p.id) ? 'border-teal-500 bg-teal-500/10 text-teal-400 shadow-xl' : 'border-slate-800 text-slate-600'}`}>{p.name}</button>
+                            }} className={`p-4 text-[10px] font-black border uppercase rounded-lg truncate transition-all ${newS.host_ids.includes(p.id) ? 'border-teal-500 bg-teal-500/10 text-teal-400' : 'border-slate-800 text-slate-600'}`}>{p.name}</button>
                         ))}
                     </div>
                     <div className="space-y-4">
