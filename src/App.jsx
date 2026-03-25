@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Zap, Trash2, Database, Quote, Loader2, UserPlus, History, FastForward, Wifi, Cpu, ThumbsUp, ThumbsDown, Dice5, PlayCircle, Globe, Calendar, RefreshCw, Terminal, X, MessageSquare, Eye } from 'lucide-react';
+import { Zap, Trash2, Database, Loader2, UserPlus, Wifi, Cpu, Dice5, PlayCircle, Globe, Calendar, RefreshCw, Terminal, MessageSquare, Archive } from 'lucide-react';
 
 const CONFIG = {
     G: ["Male", "Female", "Non-Binary", "Fluid"],
@@ -7,34 +7,12 @@ const CONFIG = {
     T: ["Witnessed server farm bleed-out.", "Neural Betrayal.", "Identity Wiped.", "None", "Exposed laundering ring."]
 };
 
-const SafeBrief = ({ data, onScript, seasonId }) => {
-    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
-    return Object.entries(data).map(([key, val], idx) => {
-        const title = val?.title || key.replace('_', ' ');
-        const text = val?.brief || (typeof val === 'string' ? val : "Data corrupted.");
-        return (
-            <div key={idx} className="mb-6 border-l-2 border-teal-900/30 pl-4 group animate-in slide-in-from-left duration-300">
-                <div className="flex justify-between items-start">
-                    <span className="text-[10px] text-teal-500 font-black uppercase tracking-widest">{title}</span>
-                    <button onClick={() => onScript({act_title: title, act_brief: text, season_id: seasonId})} className="opacity-0 group-hover:opacity-100 text-teal-600 hover:text-white transition-all">
-                        <MessageSquare size={14}/>
-                    </button>
-                </div>
-                <p className="text-sm text-slate-300 italic leading-relaxed mt-1 uppercase">"{text}"</p>
-            </div>
-        );
-    });
-};
-
 const App = () => {
-    const [tab, setTab] = useState('season');
     const [activeId, setActiveId] = useState(null); 
     const [seasons, setSeasons] = useState([]);
     const [personas, setPersonas] = useState([]);
     const [load, setLoad] = useState(false);
-    const [brief, setBrief] = useState(null);
-    const [script, setScript] = useState(null);
-    const [debug, setDebug] = useState(null);
+    const [rawFeed, setRawFeed] = useState("Uplink standby...");
 
     const [nP, setNP] = useState({ name: '', role: 'Analyst', trauma: CONFIG.T[0], gender: 'Male' });
     const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 10 });
@@ -43,133 +21,113 @@ const App = () => {
         try {
             const s = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/season/list");
             const p = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/persona/list");
-            if (s.ok) {
-                const sD = await s.json(); const pD = await p.json();
-                setSeasons(Array.isArray(sD) ? sD : []);
-                setPersonas(Array.isArray(pD) ? pD : []);
-            }
+            if (s.ok) setSeasons(await s.json());
+            if (p.ok) setPersonas(await p.json());
         } catch (e) {}
     }, []);
 
-    useEffect(() => { sync(); }, [sync]);
-    useEffect(() => { setBrief(null); setScript(null); }, [activeId, tab]);
+    const fetchRaw = async () => {
+        const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/debug/raw");
+        const d = await r.json(); setRawFeed(d.raw);
+    };
 
-    const run = async (path, body, method = 'POST', skipSync = false) => {
+    useEffect(() => { sync(); }, [sync]);
+
+    const run = async (path, body, method = 'POST') => {
         setLoad(true); try {
             const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2" + path, {
                 method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : null
             });
             const d = await r.json();
-            if (!r.ok || d.error) throw new Error(d.error || "Signal Crash");
-            if (!skipSync) await sync(); return d;
-        } catch (e) { window.alert(`FAIL: ${e.message}`); } finally { setLoad(false); }
+            if (d.raw) setRawFeed(d.raw);
+            await sync(); return d;
+        } catch (e) { window.alert(`LOG: ${e.message}`); } finally { setLoad(false); }
     };
 
-    const currentList = tab === 'season' ? seasons : personas;
-    const active = currentList.find(x => x.id === activeId);
+    const activeSeason = seasons.find(x => x.id === activeId);
 
     return (
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden select-none text-[12px]">
-            {debug && (
-                <div className="fixed inset-0 z-[200] bg-black/95 p-20 flex flex-col gap-4 backdrop-blur-3xl shadow-2xl">
-                    <div className="flex justify-between items-center border-b border-teal-900 pb-4">
-                        <h2 className="text-teal-500 font-black flex items-center gap-2 uppercase tracking-tighter"><Terminal size={18}/> Forensic_Raw_Feed</h2>
-                        <button onClick={() => setDebug(null)} className="text-slate-500 hover:text-white"><X size={24}/></button>
-                    </div>
-                    <pre className="flex-1 overflow-auto bg-black p-8 text-teal-300 text-[10px] whitespace-pre-wrap border border-teal-950 rounded-xl leading-relaxed">{debug}</pre>
-                </div>
-            )}
-
-            <aside className="w-[300px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shrink-0 shadow-2xl">
-                <div className="border-b border-slate-900 pb-4">
-                    <div className="flex items-center gap-3 text-teal-500 font-black text-sm uppercase tracking-widest"><Cpu size={16}/> Apex_v146.0</div>
-                    <div className="text-[9px] text-teal-900 font-black mt-1 uppercase italic tracking-tighter"><Calendar size={10}/> March 25, 2026</div>
-                </div>
-                <div className="space-y-2">
-                    <button onClick={async () => { setLoad(true); try { const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/ping"); const d = await r.json(); window.alert("LINK LOCKED: " + d.model); } catch(e){ window.alert("FAIL"); } finally { setLoad(false); } }} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg"><Wifi size={14}/> Handshake</button>
-                    <button onClick={async () => { const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/debug/raw"); const d = await r.json(); setDebug(d.raw); }} className="w-full p-2 text-[9px] text-teal-900 font-black uppercase hover:text-teal-400 flex items-center justify-center gap-2 border border-dashed border-teal-950/40 rounded transition-all"><Terminal size={12}/> Forensic Feed</button>
-                </div>
-                <div className="mt-auto pt-6 border-t border-slate-900"><button onClick={() => run('/purge', {})} className="w-full p-3 bg-red-950/20 text-red-500 text-[10px] font-black border border-red-900/30 hover:bg-red-600 transition-all uppercase italic">Purge Vault</button></div>
+            {/* LEFT: CONTROLS */}
+            <aside className="w-[280px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shrink-0 shadow-2xl">
+                <div className="flex items-center gap-3 text-teal-500 font-black uppercase tracking-widest border-b border-teal-900/30 pb-4"><Cpu size={16}/> Apex_v147.0</div>
+                <button onClick={() => run('/ping', null, 'GET')} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all"><Wifi size={14}/> Handshake</button>
+                <button onClick={fetchRaw} className="w-full p-4 bg-teal-950/20 text-teal-400 border border-teal-900/30 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded"><Terminal size={14}/> Sync Feed</button>
+                <div className="mt-auto border-t border-slate-900 pt-6"><button onClick={() => run('/purge', {})} className="w-full p-3 bg-red-950/20 text-red-500 text-[10px] font-black border border-red-900/30 hover:bg-red-600 transition-all uppercase">Reset</button></div>
             </aside>
 
-            <main className="flex-1 flex flex-col p-12 overflow-y-auto relative bg-[#121416]">
-                {load && <div className="absolute inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center backdrop-blur-3xl"><Loader2 className="animate-spin text-teal-500 mb-2" size={32}/><p className="text-teal-500 text-[10px] font-black uppercase tracking-widest italic animate-pulse">Establishing Signal...</p></div>}
+            {/* CENTER: FORENSIC FEED */}
+            <main className="flex-1 flex flex-col p-10 bg-[#0d0f11] relative">
+                {load && <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center"><Loader2 className="animate-spin text-teal-500" size={32}/></div>}
                 
-                <div className="flex gap-4 mb-10 border-b border-slate-800 pb-8">
-                    <button onClick={() => {setActiveId(null); setTab('season');}} className={`px-12 py-4 text-[11px] font-black transition-all ${tab === 'season' && !activeId ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>SEASONS</button>
-                    <button onClick={() => {setActiveId(null); setTab('persona');}} className={`px-12 py-4 text-[11px] font-black transition-all ${tab === 'persona' && !activeId ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>PERSONAS</button>
+                <div className="flex gap-4 mb-6 border-b border-slate-800 pb-6">
+                    <button onClick={() => setActiveId(null)} className={`px-8 py-3 font-black text-[10px] uppercase ${!activeId ? 'bg-teal-500 text-black' : 'bg-slate-800'}`}>Season List</button>
+                    {activeId && <div className="flex-1 text-teal-500 font-black uppercase flex items-center gap-2 italic truncate"><Globe size={14}/> {activeSeason?.title}</div>}
                 </div>
-                
-                {!activeId ? (<div className="grid grid-cols-2 gap-8 animate-in fade-in">
-                    {currentList.map((i, k) => (
-                        <div key={k} className="bg-[#1c1f23] border border-slate-800 p-8 rounded-3xl cursor-pointer hover:border-teal-500 flex gap-6 items-center group relative active:scale-95 transition-all shadow-inner shadow-black/80" onClick={() => setActiveId(i.id)}>
-                            <button onClick={(e) => { e.stopPropagation(); run(`/delete/${tab}/${i.id}`, null, 'DELETE'); }} className="absolute top-6 right-6 text-red-900 hover:text-red-500 transition-all active:scale-125 z-10 opacity-100"><Trash2 size={16}/></button>
-                            <img src={i?.portrait} className="w-20 h-20 rounded-2xl grayscale group-hover:grayscale-0 transition-all shadow-xl bg-black object-cover" alt="DNA" />
-                            <div className="min-w-0 flex-1"><h4 className="text-white font-black uppercase text-xl italic truncate tracking-tighter leading-none">{i?.title || i?.name}</h4><p className="text-[10px] text-teal-500 font-black opacity-60 uppercase mt-1 italic">{i?.rel || i?.role}</p></div>
-                        </div>
-                    ))}
-                </div>) : (
-                    <div className="space-y-12 animate-in slide-in-from-bottom-4 duration-500">
-                        <div className="flex justify-between items-end border-b border-slate-800 pb-10">
-                            <h2 className="text-7xl font-black text-white uppercase italic tracking-tighter leading-none shadow-teal-500/5">{active?.title || active?.name}</h2>
-                            <button onClick={() => {setActiveId(null); setScript(null);}} className="bg-teal-500 text-black px-12 py-4 text-[11px] font-black shadow-2xl active:scale-90 transition-all">BACK</button>
-                        </div>
-                        {tab === 'season' && (<div className="grid grid-cols-2 gap-10">
-                            <div className="space-y-8">
-                                <div className="bg-teal-950/10 p-10 border border-teal-900/30 rounded-3xl shadow-inner"><h4 className="text-teal-400 text-[11px] font-black uppercase mb-4 flex items-center gap-2 italic tracking-widest"><Globe size={14}/> Forensic_Report</h4><p className="text-xl text-slate-300 leading-relaxed uppercase">{active?.summary}</p></div>
-                                <div className="space-y-4">{(active?.episodes || []).map((e, idx) => (
-                                    <div key={idx} className="bg-[#1c1f23] p-6 border border-slate-800 rounded-2xl flex justify-between items-center group hover:border-teal-500 transition-all shadow-lg shadow-black/50">
-                                        <div><span className="text-[9px] text-teal-600 font-black uppercase tracking-widest">Node {e.node} - {e.phase}</span><h5 className="text-white font-bold italic uppercase leading-tight">{e.title}</h5></div>
-                                        <button onClick={() => run('/showrunner/brief', { title: e.title, phase: e.phase, season_id: active.id }, 'POST', true).then(d => setBrief(d?.acts))} className="p-3 bg-slate-900 text-teal-500 rounded-full hover:bg-teal-500 hover:text-black transition-all shadow-xl active:scale-95"><PlayCircle size={20}/></button>
-                                    </div>
-                                ))}</div>
+
+                {!activeId ? (
+                    <div className="grid grid-cols-2 gap-4">
+                        {seasons.map(s => (
+                            <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-6 border border-slate-800 rounded-2xl cursor-pointer hover:border-teal-500 transition-all relative group">
+                                <button onClick={(e) => { e.stopPropagation(); run(`/delete/season/${s.id}`, null, 'DELETE'); }} className="absolute top-4 right-4 text-red-900 hover:text-red-500"><Trash2 size={16}/></button>
+                                <h4 className="text-white font-black uppercase italic">{s.title}</h4>
+                                <p className="text-[9px] text-teal-600 font-bold uppercase mt-1">{s.rel}</p>
                             </div>
-                            <div className="space-y-6 sticky top-4 h-fit">
-                                <div className="bg-black/40 p-10 border border-slate-800 rounded-3xl shadow-2xl shadow-black/80"><h4 className="text-teal-500 text-[11px] font-black uppercase mb-6 flex items-center gap-2 italic underline decoration-teal-900 underline-offset-8 tracking-widest">Grounded_Audit</h4>
-                                    {/* Preference given to saved database brief, then local ephemeral state */}
-                                    <SafeBrief data={brief} seasonId={active.id} onScript={(data) => run('/showrunner/script', data, 'POST', true).then(d => setScript(d.dialogue))} />
-                                    {!brief && <div className="h-64 flex flex-col items-center justify-center text-slate-700 text-[10px] font-black uppercase italic animate-pulse tracking-widest text-center">Select node to generate brief</div>}
-                                </div>
-                                {script && (
-                                    <div className="bg-teal-950/20 p-10 border border-teal-500/30 rounded-3xl animate-in zoom-in duration-500 max-h-[500px] overflow-y-auto custom-scrollbar shadow-2xl">
-                                        <h4 className="text-teal-400 text-[11px] font-black uppercase mb-6 flex items-center gap-2 italic tracking-widest"><MessageSquare size={14}/> ACT_SCRIPT</h4>
-                                        {script.map((line, sIdx) => (
-                                            <div key={sIdx} className="mb-4 text-[10px] border-l border-teal-500/20 pl-4">
-                                                <span className="text-teal-700 font-black uppercase">Voice_{line.voice_id}</span>
-                                                <p className="text-slate-300 italic mt-1 uppercase">"{line.content}"</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col h-full gap-6">
+                        <div className="flex gap-2 overflow-x-auto pb-4 custom-scrollbar">
+                            {activeSeason?.episodes?.map(e => (
+                                <button key={e.node} onClick={() => run('/showrunner/brief', {title: e.title, phase: 'GOD_MODE', season_id: activeId})} className="px-4 py-2 bg-slate-900 border border-slate-800 text-[9px] font-black uppercase hover:border-teal-500 whitespace-nowrap">Brief_{e.node}</button>
+                            ))}
+                        </div>
+                        <div className="flex-1 bg-black border border-teal-900/30 p-8 rounded-3xl overflow-auto shadow-inner">
+                            <div className="flex justify-between items-center mb-6 border-b border-teal-900/20 pb-4">
+                                <span className="text-teal-500 font-black flex items-center gap-2 tracking-widest"><Terminal size={14}/> RAW_INTELLIGENCE_STREAM</span>
+                                <button onClick={() => run('/showrunner/script', {context: rawFeed, season_id: activeId})} className="bg-teal-600 text-black px-4 py-1 rounded text-[9px] font-black uppercase hover:bg-white flex items-center gap-2"><MessageSquare size={12}/> Generate Script</button>
                             </div>
-                        </div>)}
-                        {tab === 'persona' && (<div className="grid grid-cols-2 gap-10 animate-in zoom-in-95"><div className="bg-black/40 p-12 border border-slate-800 rounded-3xl flex flex-col gap-6 h-[800px] overflow-y-auto shadow-inner shadow-black/80"><h4 className="text-teal-500 text-[11px] font-black uppercase flex items-center gap-3 tracking-[0.3em]"><Quote size={20}/> Forensic Dossier</h4><p className="text-teal-600 text-[10px] font-black uppercase border-b border-slate-900 pb-2 italic">Role: {active?.role} | MBTI: {active?.archive?.mbti || 'NX'}</p><p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{active?.archive?.bio || 'DNA_SYNCING...'}</p></div><div className="bg-black/40 p-12 border border-slate-800 rounded-3xl h-[800px] overflow-y-auto custom-scrollbar shadow-2xl shadow-black/80"><h4 className="text-teal-500 text-[11px] font-black uppercase mb-6 tracking-[0.3em]">DNA_Memories (30)</h4>{Array.isArray(active?.archive?.anecdotes) ? active.archive.anecdotes.map((a, j) => <p key={j} className="p-4 bg-white/5 border border-white/5 text-[10px] text-slate-500 italic mb-3 rounded-lg leading-relaxed uppercase shadow-sm">"{a}"</p>) : <p className="italic opacity-30 uppercase text-[9px]">Memory retrieval in progress...</p>}</div></div>)}
+                            <pre className="text-teal-400 text-[11px] leading-relaxed whitespace-pre-wrap font-mono uppercase italic">{rawFeed}</pre>
+                        </div>
                     </div>
                 )}
             </main>
 
-            <aside className="w-[420px] bg-[#0b0c0e] p-12 flex flex-col gap-14 border-l border-slate-800 overflow-y-auto shrink-0 shadow-2xl shadow-black/80">
-                <div className="space-y-8"><h3 className="text-teal-400 text-[11px] font-black uppercase border-b border-slate-900 pb-4 tracking-widest"><UserPlus size={20}/> Identity_Spawn</h3>
-                    <input className="w-full bg-[#1c1f23] p-5 border border-slate-800 text-white outline-none uppercase focus:border-teal-500 shadow-inner" placeholder="NAME" value={nP.name} onChange={(e) => setNP({...nP, name: e.target.value})} />
-                    <div className="grid grid-cols-2 gap-4">
-                        <select className="bg-[#1c1f23] p-5 border border-slate-800 text-[11px] text-teal-500 font-black outline-none cursor-pointer shadow-inner" value={nP.gender} onChange={(e) => setNP({...nP, gender: e.target.value})}>{CONFIG.G.map(g => <option key={g} value={g}>{g}</option>)}</select>
-                        <input className="bg-[#1c1f23] p-5 border border-slate-800 text-[11px] text-slate-500 uppercase outline-none focus:border-teal-500 shadow-inner" placeholder="ROLE" value={nP.role} onChange={(e) => setNP({...nP, role: e.target.value})} />
+            {/* RIGHT: CREATION SIDEBAR */}
+            <aside className="w-[380px] bg-black/60 p-10 border-l border-slate-800 overflow-y-auto shrink-0 flex flex-col gap-10 shadow-2xl">
+                <div className="space-y-6">
+                    <h3 className="text-teal-500 text-[10px] font-black uppercase border-b border-slate-800 pb-2 flex items-center gap-2"><UserPlus size={16}/> Identity Spawn</h3>
+                    <input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-white outline-none focus:border-teal-500 uppercase font-bold" placeholder="NAME" value={nP.name} onChange={e => setNP({...nP, name: e.target.value})} />
+                    <div className="grid grid-cols-2 gap-2">
+                        <select className="bg-slate-900 p-4 border border-slate-800 text-[10px] text-teal-500 outline-none" value={nP.gender} onChange={e => setNP({...nP, gender: e.target.value})}>{CONFIG.G.map(g => <option key={g} value={g}>{g}</option>)}</select>
+                        <input className="bg-slate-900 p-4 border border-slate-800 text-[10px] uppercase outline-none" placeholder="ROLE" value={nP.role} onChange={e => setNP({...nP, role: e.target.value})} />
                     </div>
                     <div className="relative">
-                        <input className="w-full bg-[#1c1f23] p-5 border border-slate-800 text-[10px] text-slate-500 outline-none uppercase pr-14 shadow-inner" placeholder="CORE_TRAUMA" value={nP.trauma} onChange={(e) => setNP({...nP, trauma: e.target.value})} />
-                        <button onClick={() => setNP({...nP, trauma: CONFIG.T[Math.floor(Math.random() * CONFIG.T.length)]})} className="absolute right-4 top-4 text-slate-600 hover:text-teal-500 transition-all active:rotate-180 duration-300"><Dice5 size={24}/></button>
+                        <input className="w-full bg-slate-900 p-4 border border-slate-800 text-[9px] outline-none" placeholder="TRAUMA" value={nP.trauma} onChange={e => setNP({...nP, trauma: e.target.value})} />
+                        <button onClick={() => setNP({...nP, trauma: CONFIG.T[Math.floor(Math.random()*CONFIG.T.length)]})} className="absolute right-3 top-3 text-slate-700 hover:text-teal-500"><Dice5 size={20}/></button>
                     </div>
-                    <button onClick={() => run('/persona/create', nP)} disabled={load || !nP.name} className="w-full py-6 bg-teal-500 text-black text-[11px] font-black uppercase shadow-2xl hover:bg-white active:scale-95 transition-all shadow-teal-500/20 italic tracking-widest">Commit DNA</button>
+                    <button onClick={() => run('/persona/create', nP)} disabled={!nP.name} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] hover:bg-white transition-all">Commit DNA</button>
+                    <div className="flex gap-2 overflow-x-auto py-2">
+                        {personas.map(p => (
+                            <div key={p.id} className="relative group shrink-0">
+                                <img src={p.portrait} className="w-12 h-12 rounded border border-slate-800 group-hover:border-teal-500 transition-all bg-black" />
+                                <button onClick={() => run(`/delete/persona/${p.id}`, null, 'DELETE')} className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={10}/></button>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                <div className="space-y-8 border-t border-slate-900 pt-14"><h3 className="text-teal-400 text-[11px] font-black uppercase border-b border-slate-900 pb-4 tracking-widest"><Database size={20}/> Establish Season</h3>
-                    <input className="w-full bg-[#1c1f23] p-5 border border-slate-800 text-sm text-white font-bold outline-none focus:border-teal-500 uppercase shadow-inner" placeholder="TOPIC" value={nS.topic} onChange={(e) => setNS({...nS, topic: e.target.value})} />
-                    <select className="w-full bg-[#1c1f23] p-5 border border-slate-800 text-[11px] text-teal-400 font-bold outline-none cursor-pointer shadow-inner" value={nS.relationship} onChange={(e) => setNS({...nS, relationship: e.target.value})}>{CONFIG.D.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                    <div className="grid grid-cols-2 gap-2 max-h-[180px] overflow-y-auto p-4 border border-slate-800 rounded-xl bg-black/40 custom-scrollbar shadow-inner shadow-black/80">{(personas || []).map(p => (<button key={p.id} onClick={() => { const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(id => id !== p.id) : [...nS.host_ids, p.id]; setNS({...nS, host_ids: ids.slice(0, 2)}); }} className={`p-4 text-[9px] font-black border uppercase rounded-lg truncate transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 bg-teal-500/10 text-teal-400 shadow-xl' : 'border-slate-800 text-slate-600 hover:border-slate-600'}`}>{p.name}</button>))}</div>
-                    <div className="space-y-4">
-                        <div className="flex justify-between text-[10px] font-black text-slate-500 uppercase italic">Nodes <span>{nS.episodes_count} Eps</span></div>
-                        <input type="range" min="1" max="24" className="w-full accent-teal-500 bg-slate-900 h-2 rounded-lg appearance-none cursor-pointer shadow-inner transition-all hover:accent-white shadow-teal-500/10" value={nS.episodes_count} onChange={(e) => setNS({...nS, episodes_count: e.target.value})} />
+
+                <div className="space-y-6 border-t border-slate-900 pt-8">
+                    <h3 className="text-teal-500 text-[10px] font-black uppercase border-b border-slate-800 pb-2 flex items-center gap-2"><Archive size={16}/> Establish Season</h3>
+                    <input className="w-full bg-slate-900 p-4 border border-slate-800 text-white font-bold outline-none uppercase" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
+                    <select className="w-full bg-slate-900 p-4 border border-slate-800 text-[10px] text-teal-400 outline-none" value={nS.relationship} onChange={e => setNS({...nS, relationship: e.target.value})}>{CONFIG.D.map(d => <option key={d} value={d}>{d}</option>)}</select>
+                    <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-4 bg-black/40 rounded border border-slate-900">
+                        {personas.map(p => (
+                            <button key={p.id} onClick={() => { const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(x => x!==p.id) : [...nS.host_ids, p.id]; setNS({...nS, host_ids: ids.slice(0,2)}); }} className={`p-2 text-[8px] font-black border truncate uppercase ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400' : 'border-slate-800'}`}>{p.name}</button>
+                        ))}
                     </div>
-                    <button onClick={() => run('/season/reconcile', nS)} disabled={load || nS.host_ids.length !== 2} className="w-full py-6 bg-teal-500 text-black text-[11px] font-black uppercase shadow-2xl hover:bg-white active:scale-95 transition-all shadow-teal-500/20 italic tracking-widest">Establish Signal</button>
+                    <input type="range" min="1" max="24" className="w-full accent-teal-500" value={nS.episodes_count} onChange={e => setNS({...nS, episodes_count: e.target.value})} />
+                    <button onClick={() => run('/season/reconcile', nS)} disabled={nS.host_ids.length !== 2} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] hover:bg-white transition-all">Establish Season</button>
                 </div>
             </aside>
         </div>
