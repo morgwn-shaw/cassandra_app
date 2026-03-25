@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Zap, Trash2, Database, Loader2, UserPlus, Wifi, Cpu, Dice5, PlayCircle, Globe, Calendar, RefreshCw, Terminal, MessageSquare, Archive, BookOpen, X } from 'lucide-react';
+import { Zap, Trash2, Database, Loader2, UserPlus, Wifi, Cpu, Dice5, PlayCircle, Globe, Calendar, RefreshCw, Terminal, MessageSquare, Archive, BookOpen, Mic } from 'lucide-react';
 
 const CONFIG = {
     G: ["Male", "Female", "Non-Binary", "Fluid"],
@@ -12,9 +12,9 @@ const App = () => {
     const [seasons, setSeasons] = useState([]);
     const [personas, setPersonas] = useState([]);
     const [load, setLoad] = useState(false);
-    const [rawFeed, setRawFeed] = useState("System standby...");
+    const [rawFeed, setRawFeed] = useState("Audio Uplink standby...");
 
-    const [nP, setNP] = useState({ name: '', role: 'Forensic Analyst', trauma: CONFIG.T[0], gender: 'Male' });
+    const [nP, setNP] = useState({ name: '', role: 'Forensic Analyst', trauma: CONFIG.T[0], gender: 'Male', voice_id: '' });
     const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 10 });
 
     const sync = useCallback(async () => {
@@ -43,20 +43,20 @@ const App = () => {
 
     return (
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden select-none text-[12px]">
-            {/* LEFT: CONTROLS */}
+            {/* CONTROLS */}
             <aside className="w-[280px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shrink-0 shadow-2xl">
-                <div className="flex items-center gap-3 text-teal-500 font-black uppercase tracking-widest border-b border-teal-900/30 pb-4"><Cpu size={16}/> Apex_v149.0</div>
-                <button onClick={() => run('/ping', null, 'GET')} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all"><Wifi size={14}/> Handshake</button>
-                <div className="mt-auto border-t border-slate-900 pt-6"><button onClick={() => run('/purge', {})} className="w-full p-3 bg-red-950/20 text-red-500 text-[10px] font-black border border-red-900/30 hover:bg-red-600 transition-all uppercase">Reset</button></div>
+                <div className="flex items-center gap-3 text-teal-500 font-black uppercase tracking-widest border-b border-teal-900/30 pb-4"><Cpu size={16}/> Apex_v151.0</div>
+                <button onClick={() => run('/ping', null, 'GET')} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg"><Wifi size={14}/> Handshake</button>
+                <div className="mt-auto border-t border-slate-900 pt-6"><button onClick={() => run('/purge', {})} className="w-full p-3 bg-red-950/20 text-red-500 text-[10px] font-black border border-red-900/30 hover:bg-red-600 transition-all uppercase">Format Vault</button></div>
             </aside>
 
-            {/* CENTER: TERMINAL */}
+            {/* TERMINAL */}
             <main className="flex-1 flex flex-col p-10 bg-[#0d0f11] relative overflow-hidden">
                 {load && <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center backdrop-blur-sm"><Loader2 className="animate-spin text-teal-500" size={32}/></div>}
                 
                 <div className="flex gap-4 mb-6 border-b border-slate-800 pb-6 shrink-0">
                     <button onClick={() => setActiveId(null)} className={`px-8 py-3 font-black text-[10px] uppercase ${!activeId ? 'bg-teal-500 text-black' : 'bg-slate-800'}`}>Seasons</button>
-                    {activeId && <div className="flex-1 text-teal-500 font-black uppercase flex items-center gap-2 italic truncate tracking-widest">Node_Cluster: {activeSeason?.title}</div>}
+                    {activeId && <div className="flex-1 text-teal-500 font-black uppercase flex items-center gap-2 italic truncate tracking-widest">Live_Cluster: {activeSeason?.title}</div>}
                 </div>
 
                 {!activeId ? (
@@ -65,7 +65,7 @@ const App = () => {
                             <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-6 border border-slate-800 rounded-2xl cursor-pointer hover:border-teal-500 transition-all relative group h-fit">
                                 <button onClick={(e) => { e.stopPropagation(); run(`/delete/season/${s.id}`, null, 'DELETE'); }} className="absolute top-4 right-4 text-red-900 hover:text-red-500"><Trash2 size={16}/></button>
                                 <h4 className="text-white font-black uppercase italic text-lg">{s.title}</h4>
-                                <p className="text-[9px] text-teal-600 font-bold uppercase mt-1">{s.rel}</p>
+                                <p className="text-[9px] text-teal-600 font-bold uppercase mt-1 tracking-tighter">{s.rel}</p>
                             </div>
                         ))}
                     </div>
@@ -76,45 +76,48 @@ const App = () => {
                            <p className="text-[11px] text-slate-300 leading-relaxed uppercase italic">"{activeSeason?.summary}"</p>
                         </div>
 
-                        {/* FIXED: Episode list now wraps and scrolls vertically */}
                         <div className="flex flex-wrap gap-2 overflow-y-auto max-h-[150px] custom-scrollbar p-2 border border-slate-900 rounded-xl bg-black/20 shrink-0">
                             {activeSeason?.episodes?.map(e => (
-                                <button key={e.node} onClick={() => run('/showrunner/brief', {title: e.title, season_id: activeId})} className="px-4 py-2 bg-slate-900 border border-slate-800 text-[9px] font-black uppercase hover:border-teal-500 rounded-md flex flex-col items-start min-w-[140px] max-w-[200px]">
-                                    <span className="text-teal-700 text-[7px]">Node {e.node}</span>
+                                <button key={e.node} onClick={() => run('/showrunner/brief', {title: e.title, season_id: activeId})} className="px-4 py-2 bg-slate-900 border border-slate-800 text-[9px] font-black uppercase hover:border-teal-500 rounded-md flex flex-col items-start min-w-[140px] max-w-[200px] transition-all active:scale-95">
+                                    <span className="text-teal-700 text-[7px] mb-1 font-black">Node {e.node}</span>
                                     <span className="text-slate-400 truncate w-full">{e.title}</span>
                                 </button>
                             ))}
                         </div>
 
-                        <div className="flex-1 bg-black border border-teal-900/30 p-8 rounded-3xl overflow-auto shadow-2xl relative">
-                            <div className="sticky top-0 bg-black/90 backdrop-blur pb-4 mb-4 border-b border-teal-900/20 flex justify-between items-center">
-                                <span className="text-teal-500 font-black flex items-center gap-2 tracking-widest"><Terminal size={14}/> TERMINAL_OUTPUT</span>
-                                <button onClick={() => run('/showrunner/script', {context: rawFeed, season_id: activeId})} className="bg-teal-600 text-black px-6 py-2 rounded-full text-[9px] font-black uppercase hover:bg-white flex items-center gap-2 shadow-lg tracking-widest transition-all"><MessageSquare size={12}/> Commit to Script</button>
+                        <div className="flex-1 bg-black border border-teal-900/30 p-8 rounded-3xl overflow-auto shadow-2xl relative custom-scrollbar">
+                            <div className="sticky top-0 bg-black/90 backdrop-blur pb-4 mb-4 border-b border-teal-900/20 flex justify-between items-center z-10">
+                                <span className="text-teal-500 font-black flex items-center gap-2 tracking-widest uppercase animate-pulse"><Terminal size={14}/> AUDIO_PRODUCTION_FEED</span>
+                                <button onClick={() => run('/showrunner/script', {context: rawFeed, season_id: activeId})} className="bg-teal-600 text-black px-6 py-2 rounded-full text-[9px] font-black uppercase hover:bg-white flex items-center gap-2 shadow-lg tracking-widest transition-all italic"><MessageSquare size={12}/> Generate Ear-Ready Script</button>
                             </div>
-                            <pre className="text-teal-400 text-[11px] leading-relaxed whitespace-pre-wrap font-mono uppercase italic">{rawFeed}</pre>
+                            <pre className="text-teal-400 text-[11px] leading-relaxed whitespace-pre-wrap font-mono uppercase italic p-4 tracking-tighter">{rawFeed}</pre>
                         </div>
                     </div>
                 )}
             </main>
 
-            {/* RIGHT: CREATION (RESTORED) */}
+            {/* CREATION SIDEBAR */}
             <aside className="w-[380px] bg-black/60 p-10 border-l border-slate-800 overflow-y-auto shrink-0 flex flex-col gap-10 shadow-2xl">
                 <div className="space-y-6">
                     <h3 className="text-teal-500 text-[10px] font-black uppercase border-b border-slate-800 pb-2 flex items-center gap-2 tracking-widest"><UserPlus size={16}/> Identity Spawn</h3>
-                    <input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-white outline-none focus:border-teal-500 uppercase font-bold" placeholder="NAME" value={nP.name} onChange={e => setNP({...nP, name: e.target.value})} />
+                    <input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-white outline-none focus:border-teal-500 uppercase font-bold shadow-inner" placeholder="NAME" value={nP.name} onChange={e => setNP({...nP, name: e.target.value})} />
                     <div className="grid grid-cols-2 gap-2">
                         <select className="bg-slate-900 p-4 border border-slate-800 text-[10px] text-teal-500 outline-none" value={nP.gender} onChange={e => setNP({...nP, gender: e.target.value})}>{CONFIG.G.map(g => <option key={g} value={g}>{g}</option>)}</select>
-                        <input className="bg-slate-900 p-4 border border-slate-800 text-[10px] uppercase outline-none" placeholder="ROLE" value={nP.role} onChange={e => setNP({...nP, role: e.target.value})} />
+                        <input className="bg-slate-900 p-4 border border-slate-800 text-[10px] uppercase outline-none focus:border-teal-500" placeholder="ROLE" value={nP.role} onChange={e => setNP({...nP, role: e.target.value})} />
                     </div>
                     <div className="relative">
-                        <input className="w-full bg-slate-900 p-4 border border-slate-800 text-[9px] outline-none" placeholder="CORE_TRAUMA" value={nP.trauma} onChange={e => setNP({...nP, trauma: e.target.value})} />
-                        <button onClick={() => setNP({...nP, trauma: CONFIG.T[Math.floor(Math.random()*CONFIG.T.length)]})} className="absolute right-3 top-3 text-slate-700 hover:text-teal-500"><Dice5 size={20}/></button>
+                        <input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-teal-500 text-[9px] outline-none focus:border-teal-500 uppercase" placeholder="CARTESIA_VOICE_ID" value={nP.voice_id} onChange={e => setNP({...nP, voice_id: e.target.value})} />
+                        <Mic size={14} className="absolute right-4 top-4 text-teal-900" />
                     </div>
-                    <button onClick={() => run('/persona/create', nP)} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] hover:bg-white tracking-widest italic transition-all">Commit DNA</button>
+                    <div className="relative">
+                        <input className="w-full bg-slate-900 p-4 border border-slate-800 text-[9px] outline-none focus:border-teal-500" placeholder="CORE_TRAUMA" value={nP.trauma} onChange={e => setNP({...nP, trauma: e.target.value})} />
+                        <button onClick={() => setNP({...nP, trauma: CONFIG.T[Math.floor(Math.random()*CONFIG.T.length)]})} className="absolute right-3 top-3 text-slate-700 hover:text-teal-500 transition-all duration-300 active:rotate-180"><Dice5 size={20}/></button>
+                    </div>
+                    <button onClick={() => run('/persona/create', nP)} disabled={!nP.name} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] hover:bg-white tracking-widest italic shadow-xl transition-all">Commit DNA</button>
                     <div className="flex gap-2 overflow-x-auto py-2 custom-scrollbar">
                         {personas.map(p => (
                             <div key={p.id} className="relative group shrink-0">
-                                <img src={p.portrait} className="w-12 h-12 rounded border border-slate-800 group-hover:border-teal-500 transition-all bg-black object-cover" />
+                                <img src={p.portrait} className="w-12 h-12 rounded border border-slate-800 group-hover:border-teal-500 transition-all bg-black object-cover shadow-lg" />
                                 <button onClick={() => run(`/delete/persona/${p.id}`, null, 'DELETE')} className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={10}/></button>
                             </div>
                         ))}
@@ -123,15 +126,15 @@ const App = () => {
 
                 <div className="space-y-6 border-t border-slate-900 pt-8">
                     <h3 className="text-teal-500 text-[10px] font-black uppercase border-b border-slate-800 pb-2 flex items-center gap-2 tracking-widest"><Archive size={16}/> Establish Season</h3>
-                    <input className="w-full bg-slate-900 p-4 border border-slate-800 text-white font-bold outline-none uppercase" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
+                    <input className="w-full bg-slate-900 p-4 border border-slate-800 text-white font-bold outline-none focus:border-teal-500 uppercase" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
                     <select className="w-full bg-slate-900 p-4 border border-slate-800 text-[10px] text-teal-400 outline-none cursor-pointer" value={nS.relationship} onChange={e => setNS({...nS, relationship: e.target.value})}>{CONFIG.D.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                    <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-4 bg-black/40 rounded border border-slate-900 custom-scrollbar shadow-inner">
+                    <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-4 bg-black/40 rounded border border-slate-800 custom-scrollbar">
                         {personas.map(p => (
-                            <button key={p.id} onClick={() => { const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(x => x!==p.id) : [...nS.host_ids, p.id]; setNS({...nS, host_ids: ids.slice(0,2)}); }} className={`p-2 text-[8px] font-black border truncate uppercase rounded-md transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400 bg-teal-500/10 shadow-lg shadow-teal-500/10' : 'border-slate-800 hover:border-slate-600'}`}>{p.name}</button>
+                            <button key={p.id} onClick={() => { const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(x => x!==p.id) : [...nS.host_ids, p.id]; setNS({...nS, host_ids: ids.slice(0,2)}); }} className={`p-2 text-[8px] font-black border truncate uppercase rounded-md transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400 bg-teal-500/10 shadow-lg' : 'border-slate-800 hover:border-slate-600'}`}>{p.name}</button>
                         ))}
                     </div>
-                    <input type="range" min="1" max="24" className="w-full accent-teal-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer" value={nS.episodes_count} onChange={e => setNS({...nS, episodes_count: e.target.value})} />
-                    <button onClick={() => run('/season/reconcile', nS)} disabled={nS.host_ids.length !== 2} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] hover:bg-white shadow-xl shadow-teal-500/10 tracking-widest italic transition-all">Establish Signal</button>
+                    <input type="range" min="1" max="24" className="w-full accent-teal-500 h-1 bg-slate-800 rounded-lg cursor-pointer" value={nS.episodes_count} onChange={e => setNS({...nS, episodes_count: e.target.value})} />
+                    <button onClick={() => run('/season/reconcile', nS)} disabled={nS.host_ids.length !== 2} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] hover:bg-white tracking-widest italic shadow-xl transition-all">Establish Signal</button>
                 </div>
             </aside>
         </div>
