@@ -11,12 +11,12 @@ const SafeBrief = ({ data, onScript, seasonId }) => {
     if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
     return Object.entries(data).map(([key, val], idx) => {
         const title = val?.title || key.replace('_', ' ');
-        const text = val?.brief || (typeof val === 'string' ? val : "Data missing.");
+        const text = val?.brief || (typeof val === 'string' ? val : "Data corrupted.");
         return (
-            <div key={idx} className="mb-6 border-l-2 border-teal-900/30 pl-4 group animate-in slide-in-from-left">
+            <div key={idx} className="mb-6 border-l-2 border-teal-900/30 pl-4 group animate-in slide-in-from-left duration-300">
                 <div className="flex justify-between items-start">
                     <span className="text-[10px] text-teal-500 font-black uppercase tracking-widest">{title}</span>
-                    <button onClick={() => onScript({act_title: title, act_brief: text, season_id: seasonId})} className="opacity-40 group-hover:opacity-100 text-teal-600 hover:text-white transition-all">
+                    <button onClick={() => onScript({act_title: title, act_brief: text, season_id: seasonId})} className="opacity-0 group-hover:opacity-100 text-teal-600 hover:text-white transition-all">
                         <MessageSquare size={14}/>
                     </button>
                 </div>
@@ -60,7 +60,7 @@ const App = () => {
                 method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : null
             });
             const d = await r.json();
-            if (!r.ok || d.error) throw new Error(d.error || "Execution Crash");
+            if (!r.ok || d.error) throw new Error(d.error || "Signal Crash");
             if (!skipSync) await sync(); return d;
         } catch (e) { window.alert(`FAIL: ${e.message}`); } finally { setLoad(false); }
     };
@@ -82,11 +82,11 @@ const App = () => {
 
             <aside className="w-[300px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shrink-0 shadow-2xl">
                 <div className="border-b border-slate-900 pb-4">
-                    <div className="flex items-center gap-3 text-teal-500 font-black text-sm uppercase tracking-widest"><Cpu size={16}/> Apex_v145.0</div>
+                    <div className="flex items-center gap-3 text-teal-500 font-black text-sm uppercase tracking-widest"><Cpu size={16}/> Apex_v146.0</div>
                     <div className="text-[9px] text-teal-900 font-black mt-1 uppercase italic tracking-tighter"><Calendar size={10}/> March 25, 2026</div>
                 </div>
                 <div className="space-y-2">
-                    <button onClick={async () => { setLoad(true); try { const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/ping"); const d = await r.json(); window.alert("LINK LOCKED: " + d.model); } catch(e){ window.alert("FAIL"); } finally { setLoad(false); } }} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg shadow-teal-500/10"><Wifi size={14}/> Handshake</button>
+                    <button onClick={async () => { setLoad(true); try { const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/ping"); const d = await r.json(); window.alert("LINK LOCKED: " + d.model); } catch(e){ window.alert("FAIL"); } finally { setLoad(false); } }} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg"><Wifi size={14}/> Handshake</button>
                     <button onClick={async () => { const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/debug/raw"); const d = await r.json(); setDebug(d.raw); }} className="w-full p-2 text-[9px] text-teal-900 font-black uppercase hover:text-teal-400 flex items-center justify-center gap-2 border border-dashed border-teal-950/40 rounded transition-all"><Terminal size={12}/> Forensic Feed</button>
                 </div>
                 <div className="mt-auto pt-6 border-t border-slate-900"><button onClick={() => run('/purge', {})} className="w-full p-3 bg-red-950/20 text-red-500 text-[10px] font-black border border-red-900/30 hover:bg-red-600 transition-all uppercase italic">Purge Vault</button></div>
@@ -94,10 +94,12 @@ const App = () => {
 
             <main className="flex-1 flex flex-col p-12 overflow-y-auto relative bg-[#121416]">
                 {load && <div className="absolute inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center backdrop-blur-3xl"><Loader2 className="animate-spin text-teal-500 mb-2" size={32}/><p className="text-teal-500 text-[10px] font-black uppercase tracking-widest italic animate-pulse">Establishing Signal...</p></div>}
+                
                 <div className="flex gap-4 mb-10 border-b border-slate-800 pb-8">
                     <button onClick={() => {setActiveId(null); setTab('season');}} className={`px-12 py-4 text-[11px] font-black transition-all ${tab === 'season' && !activeId ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>SEASONS</button>
                     <button onClick={() => {setActiveId(null); setTab('persona');}} className={`px-12 py-4 text-[11px] font-black transition-all ${tab === 'persona' && !activeId ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>PERSONAS</button>
                 </div>
+                
                 {!activeId ? (<div className="grid grid-cols-2 gap-8 animate-in fade-in">
                     {currentList.map((i, k) => (
                         <div key={k} className="bg-[#1c1f23] border border-slate-800 p-8 rounded-3xl cursor-pointer hover:border-teal-500 flex gap-6 items-center group relative active:scale-95 transition-all shadow-inner shadow-black/80" onClick={() => setActiveId(i.id)}>
@@ -108,7 +110,10 @@ const App = () => {
                     ))}
                 </div>) : (
                     <div className="space-y-12 animate-in slide-in-from-bottom-4 duration-500">
-                        <div className="flex justify-between items-end border-b border-slate-800 pb-10"><h2 className="text-7xl font-black text-white uppercase italic tracking-tighter leading-none">{active?.title || active?.name}</h2><button onClick={() => {setActiveId(null); setScript(null);}} className="bg-teal-500 text-black px-12 py-4 text-[11px] font-black shadow-2xl active:scale-90 transition-all">BACK</button></div>
+                        <div className="flex justify-between items-end border-b border-slate-800 pb-10">
+                            <h2 className="text-7xl font-black text-white uppercase italic tracking-tighter leading-none shadow-teal-500/5">{active?.title || active?.name}</h2>
+                            <button onClick={() => {setActiveId(null); setScript(null);}} className="bg-teal-500 text-black px-12 py-4 text-[11px] font-black shadow-2xl active:scale-90 transition-all">BACK</button>
+                        </div>
                         {tab === 'season' && (<div className="grid grid-cols-2 gap-10">
                             <div className="space-y-8">
                                 <div className="bg-teal-950/10 p-10 border border-teal-900/30 rounded-3xl shadow-inner"><h4 className="text-teal-400 text-[11px] font-black uppercase mb-4 flex items-center gap-2 italic tracking-widest"><Globe size={14}/> Forensic_Report</h4><p className="text-xl text-slate-300 leading-relaxed uppercase">{active?.summary}</p></div>
@@ -121,7 +126,9 @@ const App = () => {
                             </div>
                             <div className="space-y-6 sticky top-4 h-fit">
                                 <div className="bg-black/40 p-10 border border-slate-800 rounded-3xl shadow-2xl shadow-black/80"><h4 className="text-teal-500 text-[11px] font-black uppercase mb-6 flex items-center gap-2 italic underline decoration-teal-900 underline-offset-8 tracking-widest">Grounded_Audit</h4>
-                                    {brief ? <SafeBrief data={brief} seasonId={active.id} onScript={(data) => run('/showrunner/script', data, 'POST', true).then(d => setScript(d.dialogue))} /> : <div className="h-64 flex flex-col items-center justify-center text-slate-700 text-[10px] font-black uppercase italic animate-pulse tracking-widest text-center">Select node to generate brief</div>}
+                                    {/* Preference given to saved database brief, then local ephemeral state */}
+                                    <SafeBrief data={brief} seasonId={active.id} onScript={(data) => run('/showrunner/script', data, 'POST', true).then(d => setScript(d.dialogue))} />
+                                    {!brief && <div className="h-64 flex flex-col items-center justify-center text-slate-700 text-[10px] font-black uppercase italic animate-pulse tracking-widest text-center">Select node to generate brief</div>}
                                 </div>
                                 {script && (
                                     <div className="bg-teal-950/20 p-10 border border-teal-500/30 rounded-3xl animate-in zoom-in duration-500 max-h-[500px] overflow-y-auto custom-scrollbar shadow-2xl">
@@ -142,7 +149,6 @@ const App = () => {
             </main>
 
             <aside className="w-[420px] bg-[#0b0c0e] p-12 flex flex-col gap-14 border-l border-slate-800 overflow-y-auto shrink-0 shadow-2xl shadow-black/80">
-                {/* RESTORED: Identity_Spawn Section */}
                 <div className="space-y-8"><h3 className="text-teal-400 text-[11px] font-black uppercase border-b border-slate-900 pb-4 tracking-widest"><UserPlus size={20}/> Identity_Spawn</h3>
                     <input className="w-full bg-[#1c1f23] p-5 border border-slate-800 text-white outline-none uppercase focus:border-teal-500 shadow-inner" placeholder="NAME" value={nP.name} onChange={(e) => setNP({...nP, name: e.target.value})} />
                     <div className="grid grid-cols-2 gap-4">
@@ -155,7 +161,6 @@ const App = () => {
                     </div>
                     <button onClick={() => run('/persona/create', nP)} disabled={load || !nP.name} className="w-full py-6 bg-teal-500 text-black text-[11px] font-black uppercase shadow-2xl hover:bg-white active:scale-95 transition-all shadow-teal-500/20 italic tracking-widest">Commit DNA</button>
                 </div>
-                {/* RESTORED: Establish Season Section */}
                 <div className="space-y-8 border-t border-slate-900 pt-14"><h3 className="text-teal-400 text-[11px] font-black uppercase border-b border-slate-900 pb-4 tracking-widest"><Database size={20}/> Establish Season</h3>
                     <input className="w-full bg-[#1c1f23] p-5 border border-slate-800 text-sm text-white font-bold outline-none focus:border-teal-500 uppercase shadow-inner" placeholder="TOPIC" value={nS.topic} onChange={(e) => setNS({...nS, topic: e.target.value})} />
                     <select className="w-full bg-[#1c1f23] p-5 border border-slate-800 text-[11px] text-teal-400 font-bold outline-none cursor-pointer shadow-inner" value={nS.relationship} onChange={(e) => setNS({...nS, relationship: e.target.value})}>{CONFIG.D.map(d => <option key={d} value={d}>{d}</option>)}</select>
