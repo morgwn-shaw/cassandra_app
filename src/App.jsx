@@ -10,8 +10,8 @@ const CONFIG = {
 const SafeBrief = ({ data }) => {
     if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
     return Object.entries(data).map(([key, val], idx) => {
-        const title = typeof val === 'object' ? val.title : key.replace('_', ' ');
-        const text = typeof val === 'object' ? val.brief : val;
+        const title = val?.title || key.replace('_', ' ');
+        const text = val?.brief || (typeof val === 'string' ? val : "Telemetry segment lost.");
         return (
             <div key={idx} className="mb-6 border-l-2 border-teal-900/30 pl-4 animate-in slide-in-from-left duration-300">
                 <span className="text-[10px] text-teal-500 font-black uppercase tracking-widest">{title}</span>
@@ -37,7 +37,11 @@ const App = () => {
         try {
             const s = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/season/list");
             const p = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/persona/list");
-            if (s.ok) { setSeasons(await s.json()); setPersonas(await p.json()); }
+            if (s.ok) {
+                const sD = await s.json(); const pD = await p.json();
+                setSeasons(Array.isArray(sD) ? sD : []);
+                setPersonas(Array.isArray(pD) ? pD : []);
+            }
         } catch (e) {}
     }, []);
 
@@ -50,33 +54,34 @@ const App = () => {
                 method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : null
             });
             const d = await r.json();
-            if (!r.ok || d.error) throw new Error(d.error || "Signal Crash");
+            if (!r.ok || d.error) throw new Error(d.error || "Execution Crash");
             if (!skipSync) await sync(); return d;
         } catch (e) { window.alert(`FAIL: ${e.message}`); } finally { setLoad(false); }
     };
 
-    const active = (tab === 'season' ? seasons : personas).find(x => x.id === activeId);
+    const currentList = tab === 'season' ? seasons : personas;
+    const active = currentList.find(x => x.id === activeId);
 
     return (
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden select-none text-[12px]">
             {debug && (
-                <div className="fixed inset-0 z-[200] bg-black/95 p-20 flex flex-col gap-4 backdrop-blur-3xl">
+                <div className="fixed inset-0 z-[200] bg-black/95 p-20 flex flex-col gap-4 backdrop-blur-3xl shadow-2xl">
                     <div className="flex justify-between items-center border-b border-teal-900 pb-4">
-                        <h2 className="text-teal-500 font-black flex items-center gap-2"><Terminal size={18}/> RAW_FORENSIC_FEED</h2>
+                        <h2 className="text-teal-500 font-black flex items-center gap-2 uppercase tracking-tighter"><Terminal size={18}/> Forensic_Feed_Raw</h2>
                         <button onClick={() => setDebug(null)} className="text-slate-500 hover:text-white"><X size={24}/></button>
                     </div>
-                    <pre className="flex-1 overflow-auto bg-black p-8 text-teal-300 text-[10px] whitespace-pre-wrap border border-teal-950 rounded-xl">{debug}</pre>
+                    <pre className="flex-1 overflow-auto bg-black p-8 text-teal-300 text-[10px] whitespace-pre-wrap border border-teal-950 rounded-xl leading-relaxed">{debug}</pre>
                 </div>
             )}
 
             <aside className="w-[300px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shrink-0 shadow-2xl">
                 <div className="border-b border-slate-900 pb-4">
-                    <div className="flex items-center gap-3 text-teal-500 font-black text-sm uppercase tracking-widest"><Cpu size={16}/> Apex_v141.0</div>
+                    <div className="flex items-center gap-3 text-teal-500 font-black text-sm uppercase tracking-widest"><Cpu size={16}/> Apex_v143.0</div>
                     <div className="text-[9px] text-teal-900 font-black mt-1 uppercase italic tracking-tighter"><Calendar size={10}/> March 25, 2026</div>
                 </div>
                 <div className="space-y-2">
-                    <button onClick={async () => { setLoad(true); try { const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/ping"); const d = await r.json(); window.alert("LINK LOCKED: " + d.model); } catch(e){ window.alert("FAIL"); } finally { setLoad(false); } }} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg"><Wifi size={14}/> Handshake</button>
-                    <button onClick={async () => { const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/debug/raw"); const d = await r.json(); setDebug(d.raw); }} className="w-full p-2 text-[9px] text-teal-900 font-black uppercase hover:text-teal-400 flex items-center justify-center gap-2 border border-dashed border-teal-950/40 rounded"><Terminal size={12}/> Forensic Feed</button>
+                    <button onClick={async () => { setLoad(true); try { const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/ping"); const d = await r.json(); window.alert("LINK LOCKED: " + d.model); } catch(e){ window.alert("FAIL"); } finally { setLoad(false); } }} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg shadow-teal-500/10"><Wifi size={14}/> Handshake</button>
+                    <button onClick={async () => { const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/debug/raw"); const d = await r.json(); setDebug(d.raw); }} className="w-full p-2 text-[9px] text-teal-900 font-black uppercase hover:text-teal-400 flex items-center justify-center gap-2 border border-dashed border-teal-950/40 rounded transition-all"><Terminal size={12}/> Forensic Feed</button>
                 </div>
                 <div className="mt-auto pt-6 border-t border-slate-900"><button onClick={() => run('/purge', {})} className="w-full p-3 bg-red-950/20 text-red-500 text-[10px] font-black border border-red-900/30 hover:bg-red-600 transition-all uppercase italic">Purge Vault</button></div>
             </aside>
@@ -90,9 +95,10 @@ const App = () => {
                 </div>
                 
                 {!activeId ? (<div className="grid grid-cols-2 gap-8 animate-in fade-in">
-                    {(tab === 'season' ? seasons : personas).map((i, k) => (
+                    {currentList.map((i, k) => (
                         <div key={k} className="bg-[#1c1f23] border border-slate-800 p-8 rounded-3xl cursor-pointer hover:border-teal-500 flex gap-6 items-center group relative active:scale-95 transition-all shadow-inner shadow-black/80" onClick={() => setActiveId(i.id)}>
-                            <button onClick={(e) => { e.stopPropagation(); run(`/delete/${tab}/${i.id}`, null, 'DELETE'); }} className="absolute top-4 right-4 text-red-900 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all active:scale-125"><Trash2 size={16}/></button>
+                            {/* RESTORED DELETE: Fixed visibility and route */}
+                            <button onClick={(e) => { e.stopPropagation(); run(`/delete/${tab}/${i.id}`, null, 'DELETE'); }} className="absolute top-6 right-6 text-red-900 hover:text-red-500 transition-all active:scale-125 z-10"><Trash2 size={16}/></button>
                             <img src={i?.portrait} className="w-20 h-20 rounded-2xl grayscale group-hover:grayscale-0 transition-all shadow-xl bg-black object-cover" alt="DNA" />
                             <div className="min-w-0 flex-1"><h4 className="text-white font-black uppercase text-xl italic truncate tracking-tighter leading-none">{i?.title || i?.name}</h4><p className="text-[10px] text-teal-500 font-black opacity-60 uppercase mt-1 italic">{i?.rel || i?.role}</p></div>
                         </div>
@@ -105,7 +111,7 @@ const App = () => {
                                 <div className="bg-teal-950/10 p-10 border border-teal-900/30 rounded-3xl shadow-inner"><h4 className="text-teal-400 text-[11px] font-black uppercase mb-4 flex items-center gap-2 italic tracking-widest"><Globe size={14}/> Forensic_Intelligence</h4><p className="text-xl text-slate-300 leading-relaxed uppercase">{active?.summary}</p></div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-black/40 p-6 border border-slate-800 rounded-3xl shadow-inner"><h4 className="text-teal-500 text-[9px] font-black uppercase mb-4 flex items-center gap-2"><History size={14}/> Shared_Lore</h4>{(active?.lore?.shared_anecdotes || []).slice(0,5).map((a, j) => <p key={j} className="text-[10px] text-slate-500 italic mb-2 leading-tight">"{a}"</p>)}</div>
-                                    <div className="bg-black/40 p-6 border border-slate-800 rounded-3xl shadow-inner"><h4 className="text-teal-400 text-[9px] font-black uppercase mb-4 flex items-center gap-2"><FastForward size={14}/> Roadmap</h4><p className="text-[11px] text-slate-400 leading-relaxed italic">{active?.lore?.future_lore || "Establishing sync..."}</p></div>
+                                    <div className="bg-black/40 p-6 border border-slate-800 rounded-3xl shadow-inner"><h4 className="text-teal-400 text-[9px] font-black uppercase mb-4 flex items-center gap-2"><FastForward size={14}/> Roadmap</h4><p className="text-[11px] text-slate-400 leading-relaxed italic">{active?.lore?.future_lore || "No roadmap linked."}</p></div>
                                 </div>
                                 <div className="space-y-4">{(active?.episodes || []).map((e, idx) => (
                                     <div key={idx} className="bg-[#1c1f23] p-6 border border-slate-800 rounded-2xl flex justify-between items-center group hover:border-teal-500 transition-all shadow-lg shadow-black/50">
