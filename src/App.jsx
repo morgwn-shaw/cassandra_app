@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Zap, Trash2, Database, Loader2, UserPlus, Wifi, Cpu, Dice5, PlayCircle, Globe, Calendar, RefreshCw, Terminal, MessageSquare, Archive, BookOpen, Mic, Copy, User, ChevronRight } from 'lucide-react';
+import { Zap, Trash2, Database, Loader2, UserPlus, Wifi, Cpu, Dice5, PlayCircle, Globe, Calendar, RefreshCw, Terminal, MessageSquare, Archive, BookOpen, Mic, Copy, User, X } from 'lucide-react';
 
 const CONFIG = {
     G: ["Male", "Female", "Non-Binary", "Fluid"],
@@ -9,11 +9,11 @@ const CONFIG = {
 
 const App = () => {
     const [activeId, setActiveId] = useState(null); 
-    const [viewPersona, setViewPersona] = useState(null); // Expansion State
+    const [viewPersona, setViewPersona] = useState(null); 
     const [seasons, setSeasons] = useState([]);
     const [personas, setPersonas] = useState([]);
     const [load, setLoad] = useState(false);
-    const [rawFeed, setRawFeed] = useState("Audio production system idle...");
+    const [rawFeed, setRawFeed] = useState("Audio Terminal standby...");
 
     const [nP, setNP] = useState({ name: '', role: 'Forensic Analyst', trauma: CONFIG.T[0], gender: 'Male', voice_id: '' });
     const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 10 });
@@ -37,68 +37,71 @@ const App = () => {
             const d = await r.json();
             if (d.raw) setRawFeed(d.raw);
             await sync(); return d;
-        } catch (e) { window.alert(`LOG: ${e.message}`); } finally { setLoad(false); }
+        } catch (e) { console.error("Fetch Interrupted"); } finally { setLoad(false); }
     };
 
     const activeSeason = seasons.find(x => x.id === activeId);
 
     return (
-        <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden text-[12px]">
-            {/* PERSONA EXPANSION OVERLAY */}
+        <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden select-none text-[12px]">
+            {/* PERSONA OVERLAY: Hardened against missing data */}
             {viewPersona && (
                 <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-20 backdrop-blur-3xl">
                     <div className="bg-[#0d0f11] w-full h-full border border-teal-900/40 rounded-3xl p-12 flex gap-12 overflow-hidden relative shadow-2xl">
                         <button onClick={() => setViewPersona(null)} className="absolute top-8 right-8 text-slate-500 hover:text-white"><X size={32}/></button>
                         <div className="w-[300px] shrink-0 space-y-6">
-                            <img src={viewPersona.portrait} className="w-full aspect-square rounded-2xl border border-teal-900/20 bg-black" />
-                            <h2 className="text-3xl font-black text-white uppercase italic">{viewPersona.name}</h2>
-                            <p className="text-teal-500 font-bold uppercase">{viewPersona.role} | {viewPersona.archive?.mbti}</p>
-                            <div className="p-4 bg-red-950/20 border border-red-900/30 text-red-500 rounded-xl text-[10px] uppercase">Trauma: {viewPersona.trauma}</div>
+                            <img src={viewPersona?.portrait} className="w-full aspect-square rounded-2xl border border-teal-900/20 bg-black object-cover" onError={(e) => e.target.src="https://via.placeholder.com/300?text=DNA_SYNCING"} />
+                            <h2 className="text-3xl font-black text-white uppercase italic">{viewPersona?.name}</h2>
+                            <p className="text-teal-500 font-bold uppercase">{viewPersona?.role} | {viewPersona?.archive?.mbti || 'NX'}</p>
+                            <div className="p-4 bg-red-950/20 border border-red-900/30 text-red-500 rounded-xl text-[10px] uppercase">Trauma: {viewPersona?.trauma}</div>
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-6 space-y-8">
-                            <div className="bg-black/40 p-6 rounded-xl border border-slate-800"><h4 className="text-teal-400 font-black mb-2 uppercase">Bio / Protocol</h4><p className="text-slate-300 leading-relaxed italic uppercase">{viewPersona.archive?.bio}</p></div>
-                            <div className="space-y-4"><h4 className="text-teal-400 font-black uppercase">Anecdote Backlog (30)</h4>{viewPersona.archive?.anecdotes?.map((a, i) => <p key={i} className="p-4 bg-white/5 border border-white/5 rounded-lg text-[10px] italic">"{a}"</p>)}</div>
+                            <div className="bg-black/40 p-6 rounded-xl border border-slate-800"><h4 className="text-teal-400 font-black mb-2 uppercase tracking-widest">Protocol</h4><p className="text-slate-300 leading-relaxed italic uppercase">{viewPersona?.archive?.bio || 'Synchronizing bio stream...'}</p></div>
+                            <div className="space-y-4"><h4 className="text-teal-400 font-black uppercase tracking-widest">Anecdote Backlog</h4>
+                                {(viewPersona?.archive?.anecdotes || []).map((a, i) => <p key={i} className="p-4 bg-white/5 border border-white/5 rounded-lg text-[10px] italic">"{a}"</p>)}
+                                {(!viewPersona?.archive?.anecdotes) && <p className="text-slate-700 italic">No anecdotes found in this cluster.</p>}
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* LEFT: SYSTEM CONTROLS */}
+            {/* LEFT SIDEBAR */}
             <aside className="w-[280px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shrink-0 shadow-2xl">
-                <div className="flex items-center gap-3 text-teal-500 font-black uppercase tracking-widest border-b border-teal-900/30 pb-4"><Cpu size={16}/> Apex_v154.0</div>
-                <button onClick={() => run('/ping', null, 'GET')} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg"><Wifi size={14}/> Handshake</button>
+                <div className="flex items-center gap-3 text-teal-500 font-black uppercase tracking-widest border-b border-teal-900/30 pb-4"><Cpu size={16}/> Apex_v155.0</div>
+                <button onClick={() => run('/ping', null, 'GET')} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg shadow-teal-500/10"><Wifi size={14}/> Handshake</button>
                 <div className="mt-auto border-t border-slate-900 pt-6"><button onClick={() => run('/purge', {})} className="w-full p-3 bg-red-950/20 text-red-500 text-[10px] font-black border border-red-900/30 hover:bg-red-600 transition-all uppercase italic">Purge DNA</button></div>
             </aside>
 
-            {/* CENTER: PRODUCTION TERMINAL */}
+            {/* MAIN TERMINAL */}
             <main className="flex-1 flex flex-col p-10 bg-[#0d0f11] relative overflow-hidden">
                 {load && <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center backdrop-blur-sm"><Loader2 className="animate-spin text-teal-500" size={32}/></div>}
                 
                 <div className="flex gap-4 mb-6 border-b border-slate-800 pb-6 shrink-0">
-                    <button onClick={() => setActiveId(null)} className={`px-8 py-3 font-black text-[10px] uppercase transition-all ${!activeId ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>Seasons</button>
-                    {activeId && <div className="flex-1 text-teal-500 font-black uppercase flex items-center gap-2 italic truncate tracking-widest underline decoration-teal-900">Uplink: {activeSeason?.title}</div>}
+                    <button onClick={() => setActiveId(null)} className={`px-8 py-3 font-black text-[10px] uppercase transition-all ${!activeId ? 'bg-teal-500 text-black' : 'bg-slate-800'}`}>Season List</button>
+                    {activeId && <div className="flex-1 text-teal-500 font-black uppercase flex items-center gap-2 italic truncate tracking-widest">Active_Uplink: {activeSeason?.title}</div>}
                 </div>
 
                 {!activeId ? (
                     <div className="grid grid-cols-2 gap-4 overflow-y-auto custom-scrollbar pr-4">
-                        {seasons.map(s => (
-                            <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-6 border border-slate-800 rounded-2xl cursor-pointer hover:border-teal-500 transition-all relative group h-fit shadow-xl shadow-black/40">
+                        {(seasons || []).map(s => (
+                            <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-6 border border-slate-800 rounded-2xl cursor-pointer hover:border-teal-500 transition-all relative group h-fit">
                                 <button onClick={(e) => { e.stopPropagation(); run(`/delete/season/${s.id}`, null, 'DELETE'); }} className="absolute top-4 right-4 text-red-900 hover:text-red-500"><Trash2 size={16}/></button>
                                 <h4 className="text-white font-black uppercase italic text-lg tracking-tighter">{s.title}</h4>
-                                <p className="text-[9px] text-teal-600 font-bold uppercase mt-1 italic tracking-widest">{s.rel}</p>
+                                <p className="text-[9px] text-teal-600 font-bold uppercase mt-1 italic">{s.rel}</p>
                             </div>
                         ))}
                     </div>
                 ) : (
                     <div className="flex flex-col h-full gap-6 overflow-hidden">
                         <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-2xl shrink-0 shadow-inner">
-                           <h5 className="text-teal-500 text-[9px] font-black uppercase mb-2 flex items-center gap-2 tracking-[0.2em] italic"><BookOpen size={14}/> Forensic_Overview</h5>
+                           <h5 className="text-teal-500 text-[9px] font-black uppercase mb-2 flex items-center gap-2 tracking-[0.2em] italic"><BookOpen size={14}/> Forensic_Report</h5>
                            <p className="text-[11px] text-slate-300 leading-relaxed uppercase italic">"{activeSeason?.summary}"</p>
                         </div>
 
                         <div className="flex flex-wrap gap-2 overflow-y-auto max-h-[150px] custom-scrollbar p-2 border border-slate-900 rounded-xl bg-black/20 shrink-0">
-                            {activeSeason?.episodes?.map(e => (
-                                <button key={e.node} onClick={() => run('/showrunner/brief', {title: e.title, season_id: activeId})} className="px-4 py-2 bg-slate-900 border border-slate-800 text-[9px] font-black uppercase hover:border-teal-500 rounded-md flex flex-col items-start min-w-[140px] max-w-[200px] transition-all active:scale-95">
+                            {(activeSeason?.episodes || []).map(e => (
+                                <button key={e.node} onClick={() => run('/showrunner/brief', {title: e.title, season_id: activeId})} className="px-4 py-3 bg-slate-900 border border-slate-800 text-[9px] font-black uppercase hover:border-teal-500 rounded-lg flex flex-col items-start min-w-[140px] max-w-[200px]">
                                     <span className="text-teal-700 text-[7px] mb-1 font-black">Node {e.node}</span>
                                     <span className="text-slate-400 truncate w-full">{e.title}</span>
                                 </button>
@@ -107,10 +110,10 @@ const App = () => {
 
                         <div className="flex-1 bg-black border border-teal-900/30 p-8 rounded-3xl overflow-auto shadow-2xl relative custom-scrollbar select-text selection:bg-teal-500 selection:text-black">
                             <div className="sticky top-0 bg-black/90 backdrop-blur pb-4 mb-4 border-b border-teal-900/20 flex justify-between items-center z-10">
-                                <span className="text-teal-500 font-black flex items-center gap-2 tracking-widest uppercase italic"><Terminal size={14}/> PRODUCTION_UPLINK</span>
+                                <span className="text-teal-500 font-black flex items-center gap-2 tracking-widest uppercase italic animate-pulse"><Terminal size={14}/> PRODUCTION_FEED</span>
                                 <div className="flex gap-4">
-                                    <button onClick={() => { navigator.clipboard.writeText(rawFeed); window.alert("TRANSCRIPT_CLIPPED"); }} className="bg-slate-900 text-teal-500 px-4 py-2 rounded-full text-[8px] font-black hover:bg-teal-500 hover:text-black flex items-center gap-2 transition-all"><Copy size={12}/> Copy</button>
-                                    <button onClick={() => run('/showrunner/script', {context: rawFeed, season_id: activeId})} className="bg-teal-600 text-black px-6 py-2 rounded-full text-[9px] font-black uppercase hover:bg-white flex items-center gap-2 shadow-lg tracking-[0.2em] transition-all italic"><MessageSquare size={12}/> Commit 2.0k Script</button>
+                                    <button onClick={() => { navigator.clipboard.writeText(rawFeed); window.alert("CLIPPED"); }} className="bg-slate-900 text-teal-500 px-4 py-2 rounded-full text-[8px] font-black hover:bg-teal-500 hover:text-black flex items-center gap-2 transition-all"><Copy size={12}/> Copy</button>
+                                    <button onClick={() => run('/showrunner/script', {context: rawFeed, season_id: activeId})} className="bg-teal-600 text-black px-6 py-2 rounded-full text-[9px] font-black uppercase hover:bg-white flex items-center gap-2 shadow-lg tracking-widest italic transition-all"><MessageSquare size={12}/> Generate Long Script</button>
                                 </div>
                             </div>
                             <pre className="text-teal-400 text-[12px] leading-relaxed whitespace-pre-wrap font-mono uppercase italic p-4 cursor-text">{rawFeed}</pre>
@@ -119,7 +122,7 @@ const App = () => {
                 )}
             </main>
 
-            {/* RIGHT: IDENTITY & SEASON SPANNER */}
+            {/* RIGHT SIDEBAR: RESTORED & HARDENED */}
             <aside className="w-[380px] bg-black/60 p-10 border-l border-slate-800 overflow-y-auto shrink-0 flex flex-col gap-10 shadow-2xl custom-scrollbar">
                 <div className="space-y-6">
                     <h3 className="text-teal-500 text-[10px] font-black uppercase border-b border-slate-800 pb-2 flex items-center gap-2 tracking-widest"><UserPlus size={16}/> Identity Spawn</h3>
@@ -128,20 +131,13 @@ const App = () => {
                         <select className="bg-slate-900 p-4 border border-slate-800 text-[10px] text-teal-500 outline-none" value={nP.gender} onChange={e => setNP({...nP, gender: e.target.value})}>{CONFIG.G.map(g => <option key={g} value={g}>{g}</option>)}</select>
                         <input className="bg-slate-900 p-4 border border-slate-800 text-[10px] uppercase outline-none focus:border-teal-500" placeholder="ROLE" value={nP.role} onChange={e => setNP({...nP, role: e.target.value})} />
                     </div>
-                    <div className="relative">
-                        <input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-teal-500 text-[9px] outline-none focus:border-teal-500 uppercase shadow-inner" placeholder="VOICE_ID (CARTESIA)" value={nP.voice_id} onChange={e => setNP({...nP, voice_id: e.target.value})} />
-                        <Mic size={14} className="absolute right-4 top-4 text-teal-900" />
-                    </div>
-                    <div className="relative">
-                        <input className="w-full bg-slate-900 p-4 border border-slate-800 text-[9px] outline-none focus:border-teal-500 shadow-inner" placeholder="CORE_TRAUMA" value={nP.trauma} onChange={e => setNP({...nP, trauma: e.target.value})} />
-                        <button onClick={() => setNP({...nP, trauma: CONFIG.T[Math.floor(Math.random()*CONFIG.T.length)]})} className="absolute right-3 top-3 text-slate-700 hover:text-teal-500 transition-all duration-300 active:rotate-180"><Dice5 size={20}/></button>
-                    </div>
+                    <div className="relative"><input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-teal-500 text-[9px] outline-none" placeholder="TTS_VOICE_ID" value={nP.voice_id} onChange={e => setNP({...nP, voice_id: e.target.value})} /><Mic size={14} className="absolute right-4 top-4 text-teal-900" /></div>
+                    <div className="relative"><input className="w-full bg-slate-900 p-4 border border-slate-800 text-[9px] outline-none" placeholder="CORE_TRAUMA" value={nP.trauma} onChange={e => setNP({...nP, trauma: e.target.value})} /><button onClick={() => setNP({...nP, trauma: CONFIG.T[Math.floor(Math.random()*CONFIG.T.length)]})} className="absolute right-3 top-3 text-slate-700 hover:text-teal-500 duration-300 active:rotate-180"><Dice5 size={20}/></button></div>
                     <button onClick={() => run('/persona/create', nP)} disabled={!nP.name} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] hover:bg-white tracking-widest italic shadow-xl transition-all">Commit DNA</button>
                     <div className="flex flex-wrap gap-2 py-4">
-                        {personas.map(p => (
+                        {(personas || []).map(p => (
                             <div key={p.id} className="relative group cursor-pointer" onClick={() => setViewPersona(p)}>
-                                <img src={p.portrait} className="w-14 h-14 rounded-lg border border-slate-800 group-hover:border-teal-500 transition-all bg-black object-cover" />
-                                <div className="absolute inset-0 bg-teal-500/10 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg"><User size={14} className="text-white"/></div>
+                                <img src={p.portrait} className="w-14 h-14 rounded-lg border border-slate-800 group-hover:border-teal-500 transition-all bg-black object-cover shadow-lg" onError={(e) => e.target.src="https://via.placeholder.com/100?text=?"} />
                                 <button onClick={(e) => { e.stopPropagation(); run(`/delete/persona/${p.id}`, null, 'DELETE'); }} className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg"><Trash2 size={10}/></button>
                             </div>
                         ))}
@@ -150,15 +146,15 @@ const App = () => {
 
                 <div className="space-y-6 border-t border-slate-900 pt-8">
                     <h3 className="text-teal-500 text-[10px] font-black uppercase border-b border-slate-800 pb-2 flex items-center gap-2 tracking-widest"><Archive size={16}/> Establish Season</h3>
-                    <input className="w-full bg-slate-900 p-4 border border-slate-800 text-white font-bold outline-none focus:border-teal-500 uppercase shadow-inner" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
+                    <input className="w-full bg-slate-900 p-4 border border-slate-800 text-white font-bold outline-none focus:border-teal-500 uppercase" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
                     <select className="w-full bg-slate-900 p-4 border border-slate-800 text-[10px] text-teal-400 outline-none cursor-pointer" value={nS.relationship} onChange={e => setNS({...nS, relationship: e.target.value})}>{CONFIG.D.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                    <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-4 bg-black/40 rounded border border-slate-800 custom-scrollbar shadow-inner">
-                        {personas.map(p => (
+                    <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-4 bg-black/40 rounded border border-slate-800 custom-scrollbar">
+                        {(personas || []).map(p => (
                             <button key={p.id} onClick={() => { const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(x => x!==p.id) : [...nS.host_ids, p.id]; setNS({...nS, host_ids: ids.slice(0,2)}); }} className={`p-2 text-[8px] font-black border truncate uppercase rounded-md transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400 bg-teal-500/10' : 'border-slate-800 hover:border-slate-600'}`}>{p.name}</button>
                         ))}
                     </div>
-                    <input type="range" min="1" max="24" className="w-full accent-teal-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer" value={nS.episodes_count} onChange={e => setNS({...nS, episodes_count: e.target.value})} />
-                    <button onClick={() => run('/season/reconcile', nS)} disabled={nS.host_ids.length !== 2} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] hover:bg-white tracking-widest italic shadow-xl shadow-teal-500/20 transition-all">Establish Signal</button>
+                    <input type="range" min="1" max="24" className="w-full accent-teal-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer shadow-inner" value={nS.episodes_count} onChange={e => setNS({...nS, episodes_count: e.target.value})} />
+                    <button onClick={() => run('/season/reconcile', nS)} disabled={nS.host_ids.length !== 2} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] hover:bg-white tracking-widest italic shadow-xl shadow-teal-500/20 transition-all">Establish Season</button>
                 </div>
             </aside>
         </div>
