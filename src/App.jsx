@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Zap, Trash2, Database, Quote, Loader2, UserPlus, History, FastForward, Wifi, Cpu, ThumbsUp, ThumbsDown, Dice5, PlayCircle, Globe, Calendar, RefreshCw, FileText } from 'lucide-react';
+import { Zap, Trash2, Database, Quote, Loader2, UserPlus, History, FastForward, Wifi, Cpu, ThumbsUp, ThumbsDown, Dice5, PlayCircle, Globe, Calendar, RefreshCw, Music } from 'lucide-react';
 
 const CONFIG = {
     G: ["Male", "Female", "Non-Binary", "Fluid"],
@@ -33,8 +33,9 @@ const App = () => {
         try {
             const s = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/season/list");
             const p = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/persona/list");
-            if (s.ok) { setSeasons(await s.json()); setPersonas(await p.json()); }
-        } catch (e) {}
+            if (s.ok) setSeasons(await s.json());
+            if (p.ok) setPersonas(await p.json());
+        } catch (e) { console.error("Link weak."); }
     }, []);
 
     useEffect(() => { sync(); }, [sync]);
@@ -46,9 +47,9 @@ const App = () => {
                 method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : null
             });
             const d = await r.json();
-            if (!r.ok || d.error) throw new Error(d.error || "Signal Crash");
+            if (!r.ok || d.error) throw new Error(d.error || "Signal Interrupted");
             if (!skipSync) await sync(); return d;
-        } catch (e) { window.alert(`FAIL: ${e.message}`); } finally { setLoad(false); }
+        } catch (e) { window.alert(`LOG: ${e.message}`); } finally { setLoad(false); }
     };
 
     const currentList = tab === 'season' ? seasons : personas;
@@ -62,25 +63,23 @@ const App = () => {
                     <div className="text-[9px] text-teal-900 font-black mt-1 uppercase italic tracking-tighter"><Calendar size={10}/> {today}</div>
                 </div>
                 <div className="space-y-2">
-                    <button onClick={async () => { setLoad(true); try { const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/ping"); const d = await r.json(); window.alert("SIGNAL LOCKED: " + d.model); } catch(e){ window.alert("FAIL"); } finally { setLoad(false); } }} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg"><Wifi size={14}/> Handshake</button>
+                    <button onClick={async () => { setLoad(true); try { const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/ping"); const d = await r.json(); window.alert("SIGNAL LOCKED: " + d.model); } catch(e){ window.alert("FAIL"); } finally { setLoad(false); } }} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg shadow-teal-500/10"><Wifi size={14}/> Handshake</button>
                     <button onClick={() => setLoad(false)} className="w-full p-2 text-[9px] text-teal-900 font-black uppercase hover:text-teal-400 flex items-center justify-center gap-2"><RefreshCw size={12}/> Kill Blocker</button>
                 </div>
                 <div className="mt-auto pt-6 border-t border-slate-900"><button onClick={() => run('/purge', {})} className="w-full p-3 bg-red-950/20 text-red-500 text-[10px] font-black border border-red-900/30 hover:bg-red-600 transition-all uppercase italic">Purge Vault</button></div>
             </aside>
 
             <main className="flex-1 flex flex-col p-12 overflow-y-auto relative bg-[#121416]">
-                {load && <div className="absolute inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center backdrop-blur-3xl"><Loader2 className="animate-spin text-teal-500 mb-2" size={32}/><p className="text-teal-500 text-[10px] font-black uppercase tracking-widest italic animate-pulse">Establishing Signal...</p></div>}
-                
+                {load && <div className="absolute inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center backdrop-blur-3xl"><Loader2 className="animate-spin text-teal-500 mb-2" size={32}/><p className="text-teal-500 text-[10px] font-black uppercase tracking-widest italic animate-pulse">Synchronizing Reality Signal...</p></div>}
                 <div className="flex gap-4 mb-10 border-b border-slate-800 pb-8">
                     <button onClick={() => {setActiveId(null); setTab('season');}} className={`px-12 py-4 text-[11px] font-black transition-all ${tab === 'season' && !activeId ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>SEASONS</button>
                     <button onClick={() => {setActiveId(null); setTab('persona');}} className={`px-12 py-4 text-[11px] font-black transition-all ${tab === 'persona' && !activeId ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>PERSONAS</button>
                 </div>
-                
                 {!activeId ? (<div className="grid grid-cols-2 gap-8 animate-in fade-in">
                     {currentList.map((i, k) => (
                         <div key={k} className="bg-[#1c1f23] border border-slate-800 p-8 rounded-3xl cursor-pointer hover:border-teal-500 flex gap-6 items-center group relative active:scale-95 transition-all shadow-inner shadow-black/80" onClick={() => setActiveId(i.id)}>
                             <button onClick={(e) => { e.stopPropagation(); run(`/delete/${tab}/${i.id}`, null, 'DELETE'); }} className="absolute top-4 right-4 text-red-900 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all active:scale-125"><Trash2 size={16}/></button>
-                            <img src={i?.portrait} className="w-20 h-20 rounded-2xl grayscale group-hover:grayscale-0 transition-all shadow-xl bg-black object-cover" alt="DNA" />
+                            <img src={i?.portrait} className="w-20 h-20 rounded-2xl grayscale group-hover:grayscale-0 transition-all shadow-xl bg-black object-cover" alt="DNA" onError={(e) => { e.target.src = "https://via.placeholder.com/200?text=DNA_SYNCING"; }}/>
                             <div className="min-w-0 flex-1"><h4 className="text-white font-black uppercase text-xl italic truncate tracking-tighter leading-none">{i?.title || i?.name}</h4><p className="text-[10px] text-teal-500 font-black opacity-60 uppercase mt-1 italic">{i?.rel || i?.role}</p></div>
                         </div>
                     ))}
