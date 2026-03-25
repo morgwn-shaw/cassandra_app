@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Trash2, Database, Quote, Loader2, UserPlus, History, FastForward, Wifi, Cpu, ThumbsUp, ThumbsDown, Dice5, ScrollText, PlayCircle, Globe, Calendar, RefreshCw } from 'lucide-react';
+import { Zap, Trash2, Database, Quote, Loader2, UserPlus, History, FastForward, Wifi, Cpu, ThumbsUp, ThumbsDown, Dice5, ScrollText, Globe, Calendar, RefreshCw } from 'lucide-react';
 
 const CONFIG = {
     G: ["Male", "Female", "Non-Binary", "Fluid"],
@@ -8,14 +8,13 @@ const CONFIG = {
 };
 
 const App = () => {
-    // Strictly initialized arrays to prevent white screen mapping errors
     const [tab, setTab] = useState('season');
     const [active, setActive] = useState(null);
     const [seasons, setSeasons] = useState([]);
     const [personas, setPersonas] = useState([]);
     const [load, setLoad] = useState(false);
     const [eng, setEng] = useState('OFFLINE');
-    const [today, setToday] = useState('CALIBRATING...');
+    const [today, setToday] = useState('0000-00-00');
 
     const sync = async () => {
         try {
@@ -33,9 +32,11 @@ const App = () => {
     const ping = async () => {
         setLoad(true); try {
             const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/ping");
-            if (!r.ok) throw new Error("HTTP_FAIL_" + r.status);
-            const d = await r.json(); setEng(d.model?.toUpperCase()); setToday(d.date);
-        } catch (e) { window.alert(`PING ERROR: ${e.message}`); } finally { setLoad(false); }
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || `HTTP_${r.status}`);
+            setEng(d.model?.toUpperCase()); setToday(d.date);
+            window.alert(`RAW SIGNAL SUCCESS: ${d.model}`);
+        } catch (e) { window.alert(`PING FAILED: ${e.message}`); } finally { setLoad(false); }
     };
 
     const run = async (path, body, method = 'POST') => {
@@ -46,13 +47,13 @@ const App = () => {
             const cType = r.headers.get("content-type");
             if (!cType || !cType.includes("application/json")) {
                 const txt = await r.text();
-                throw new Error(`GATEWAY ERROR: ${txt.substring(0, 150)}`);
+                throw new Error(`SERVER SENT HTML (GATEWAY ERROR): ${txt.substring(0, 100)}...`);
             }
             const d = await r.json(); 
             if (d.error) throw new Error(`AI ERROR: ${d.error}`);
             await sync(); return d;
         } catch (e) { 
-            window.alert(`RAW SIGNAL FAILURE: ${e.message}`); 
+            window.alert(`CRITICAL SIGNAL FAIL: ${e.message}`); 
         } finally { setLoad(false); }
     };
 
@@ -60,19 +61,20 @@ const App = () => {
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden select-none text-[12px]">
             <aside className="w-[300px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shrink-0 shadow-2xl">
                 <div className="border-b border-slate-900 pb-4">
-                    <div className="flex items-center gap-3 text-teal-500 font-black text-sm uppercase tracking-widest"><Cpu size={16}/> Apex_v107.0</div>
+                    <div className="flex items-center gap-3 text-teal-500 font-black text-sm uppercase tracking-widest"><Cpu size={16}/> Apex_v108.0</div>
                     <div className="text-[9px] text-teal-900 font-black mt-1 uppercase italic tracking-tighter"><Calendar size={10}/> {today}</div>
                 </div>
                 <div className="space-y-2">
-                    <button onClick={ping} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg"><Wifi size={14}/> Raw Handshake</button>
-                    <button onClick={() => setLoad(false)} className="w-full p-2 text-[9px] text-teal-900 font-black uppercase hover:text-teal-400 flex items-center justify-center gap-2"><RefreshCw size={12}/> Kill Load State</button>
+                    <button onClick={ping} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg"><Wifi size={14}/> Handshake</button>
+                    <button onClick={() => setLoad(false)} className="w-full p-2 text-[9px] text-teal-900 font-black uppercase hover:text-teal-400 flex items-center justify-center gap-2"><RefreshCw size={12}/> Reset Blocker</button>
                 </div>
-                <div className="mt-auto space-y-4 pt-6 border-t border-slate-900"><button onClick={() => run('/purge', {})} className="w-full p-3 bg-red-950/20 text-red-500 text-[10px] font-black border border-red-900/30 hover:bg-red-600 transition-all uppercase">Purge Vault</button></div>
+                <div className="mt-auto space-y-4 pt-6 border-t border-slate-900">
+                    <button onClick={() => run('/purge', {})} className="w-full p-3 bg-red-950/20 text-red-500 text-[10px] font-black border border-red-900/30 hover:bg-red-600 transition-all uppercase">Purge Vault</button>
+                </div>
             </aside>
 
             <main className="flex-1 flex flex-col p-12 overflow-y-auto relative bg-[#121416]">
-                {load && <div className="absolute inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center backdrop-blur-3xl"><Loader2 className="animate-spin text-teal-500 mb-2" size={32}/><p className="text-teal-500 text-[10px] font-black uppercase tracking-widest animate-pulse">Establishing Raw Signal...</p></div>}
-                
+                {load && <div className="absolute inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center backdrop-blur-3xl"><Loader2 className="animate-spin text-teal-500 mb-2" size={32}/><p className="text-teal-500 text-[10px] font-black uppercase tracking-widest animate-pulse italic">Establishing Reality Pass...</p></div>}
                 <div className="flex gap-4 mb-10 border-b border-slate-800 pb-8">
                     <button onClick={() => {setActive(null); setTab('season');}} className={`px-12 py-4 text-[11px] font-black transition-all ${tab === 'season' && !active ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>SEASONS</button>
                     <button onClick={() => {setActive(null); setTab('persona');}} className={`px-12 py-4 text-[11px] font-black transition-all ${tab === 'persona' && !active ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>PERSONAS</button>
@@ -81,7 +83,7 @@ const App = () => {
                 {!active ? (<div className="grid grid-cols-2 gap-8 animate-in fade-in">
                     {(tab === 'season' ? seasons : personas).map((i, k) => (
                         <div key={k} className="bg-[#1c1f23] border border-slate-800 p-8 rounded-3xl cursor-pointer hover:border-teal-500 flex gap-6 items-center group relative active:scale-95 transition-all shadow-inner" onClick={() => setActive(i)}>
-                            <button onClick={(e) => { e.stopPropagation(); run(`/delete/${tab}/${i.id}`, null, 'DELETE'); }} className="absolute top-4 right-4 text-red-900 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
+                            <button onClick={(e) => { e.stopPropagation(); run(`/delete/${tab}/${i.id}`, null, 'DELETE'); }} className="absolute top-4 right-4 text-red-900 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all active:scale-125"><Trash2 size={16}/></button>
                             <img src={i?.portrait} className="w-20 h-20 rounded-2xl grayscale group-hover:grayscale-0 transition-all shadow-xl" alt="DNA"/>
                             <div className="min-w-0 flex-1"><h4 className="text-white font-black uppercase text-xl italic truncate tracking-tighter leading-none">{i?.title || i?.name}</h4><p className="text-[10px] text-teal-500 font-black opacity-60 uppercase mt-1 italic">{i?.rel || i?.role}</p></div>
                         </div>
@@ -91,7 +93,7 @@ const App = () => {
                         <div className="flex justify-between items-end border-b border-slate-800 pb-10"><h2 className="text-7xl font-black text-white uppercase italic tracking-tighter leading-none shadow-teal-500/5">{active?.title || active?.name}</h2><button onClick={() => setActive(null)} className="bg-teal-500 text-black px-12 py-4 text-[11px] font-black shadow-2xl active:scale-90 transition-all">BACK</button></div>
                         {tab === 'season' && (<div className="grid grid-cols-2 gap-10">
                             <div className="space-y-8">
-                                <div className="bg-teal-950/10 p-10 border border-teal-900/30 rounded-3xl shadow-inner"><h4 className="text-teal-400 text-[11px] font-black uppercase mb-4 flex items-center gap-2 italic tracking-widest"><Globe size={14}/> 2026_Report</h4><p className="text-xl text-slate-300 leading-relaxed uppercase">{active?.summary}</p></div>
+                                <div className="bg-teal-950/10 p-10 border border-teal-900/30 rounded-3xl shadow-inner"><h4 className="text-teal-400 text-[11px] font-black uppercase mb-4 flex items-center gap-2 italic tracking-widest"><Globe size={14}/> 2026_Forensic_Report</h4><p className="text-xl text-slate-300 leading-relaxed uppercase">{active?.summary}</p></div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-black/40 p-6 border border-slate-800 rounded-3xl shadow-inner"><h4 className="text-teal-500 text-[9px] font-black uppercase mb-4 flex items-center gap-2"><History size={14}/> Shared_Lore</h4>{(active?.lore?.shared_anecdotes || []).map((a, j) => <p key={j} className="text-[10px] text-slate-500 italic mb-2 leading-tight">"{a}"</p>)}</div>
                                     <div className="bg-black/40 p-6 border border-slate-800 rounded-3xl shadow-inner"><h4 className="text-teal-400 text-[9px] font-black uppercase mb-4 flex items-center gap-2"><FastForward size={14}/> Roadmap</h4><p className="text-[11px] text-slate-400 leading-relaxed italic">{active?.lore?.future_lore || "Sync pending."}</p></div>
