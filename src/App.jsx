@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Zap, Trash2, Database, Loader2, UserPlus, Wifi, Cpu, Dice5, PlayCircle, Globe, Calendar, RefreshCw, Terminal, MessageSquare, Archive, BookOpen, Mic, Copy, User, X, ShieldCheck, Clock, Layers } from 'lucide-react';
+import { Zap, Trash2, Database, Loader2, UserPlus, Wifi, Cpu, Dice5, PlayCircle, Globe, Calendar, RefreshCw, Terminal, MessageSquare, Archive, BookOpen, Mic, Copy, User, X, ShieldCheck, Clock, Layers, Music, Share2 } from 'lucide-react';
 
 const CONFIG = {
     G: ["Male", "Female", "Non-Binary", "Fluid"],
@@ -15,6 +15,9 @@ const App = () => {
     const [personas, setPersonas] = useState([]);
     const [load, setLoad] = useState(false);
     const [terminalMode, setTerminalMode] = useState('brief');
+    
+    // NEW: Production tracking
+    const [producingId, setProducingId] = useState(null);
 
     const [nP, setNP] = useState({ name: '', role: 'Forensic Analyst', trauma: CONFIG.T[0], gender: 'Male', voice_id: '' });
     const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 10, target_runtime: 15 });
@@ -23,8 +26,11 @@ const App = () => {
         try {
             const s = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/season/list");
             const p = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/persona/list");
-            if (s.ok) { setSeasons(await s.json()); setPersonas(await p.json()); }
-        } catch (e) {}
+            if (s.ok) { 
+                setSeasons(await s.json()); 
+                setPersonas(await p.json()); 
+            }
+        } catch (e) { console.error("Sync Error", e); }
     }, []);
 
     useEffect(() => { sync(); }, [sync]);
@@ -35,8 +41,26 @@ const App = () => {
             const r = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2" + path, {
                 method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
             });
-            const d = await r.json(); await sync(); return d;
+            const d = await r.json(); 
+            await sync(); 
+            return d;
         } catch (e) { window.alert(`FAIL: ${e.message}`); } finally { setLoad(false); }
+    };
+
+    // NEW: Production Trigger
+    const produceAudio = async (episode) => {
+        setProducingId(episode.id);
+        const script = getMasterScript();
+        try {
+            await run('/production/produce', {
+                episode_id: episode.id,
+                script: script,
+                runtime: activeSeason?.target_runtime || 15
+            });
+            window.alert("PRODUCTION_STARTED: Audio will appear in nodes momentarily.");
+        } finally {
+            setProducingId(null);
+        }
     };
 
     const activeSeason = seasons.find(x => x.id === activeId);
@@ -55,7 +79,11 @@ const App = () => {
                     <div className="bg-[#0d0f11] w-full h-full border border-teal-900/40 rounded-3xl p-12 flex gap-12 overflow-hidden relative shadow-2xl animate-in zoom-in" onClick={e => e.stopPropagation()}>
                         <button onClick={() => setViewPersona(null)} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-all"><X size={32}/></button>
                         <div className="w-[300px] shrink-0 space-y-6">
-                            <img src={viewPersona?.portrait} className="w-full aspect-square rounded-2xl border border-teal-900/20 bg-black object-cover" />
+                            {/* FIXED: Portrait handling */}
+                            <div className="w-full aspect-square rounded-2xl border border-teal-900/20 bg-black overflow-hidden relative group">
+                                <img src={viewPersona?.portrait || `https://api.dicebear.com/7.x/bottts/svg?seed=${viewPersona.name}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                            </div>
                             <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter">{viewPersona?.name}</h2>
                             <div className="p-4 bg-red-950/20 border border-red-900/30 text-red-500 rounded-xl text-[9px] uppercase font-black italic">Trauma: {viewPersona?.trauma}</div>
                         </div>
@@ -72,6 +100,12 @@ const App = () => {
             <aside className="w-[260px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shrink-0 shadow-2xl">
                 <div className="flex items-center gap-3 text-teal-500 font-black uppercase tracking-widest border-b border-teal-900/30 pb-4"><Cpu size={16}/> Apex_v165.0</div>
                 <button onClick={sync} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg shadow-teal-500/10"><Wifi size={14}/> Sync Data</button>
+                
+                {/* NEW: Global Production Feed Placeholder */}
+                <div className="mt-auto p-4 border border-slate-800 rounded-xl bg-black/40">
+                   <h6 className="text-[8px] font-black uppercase text-slate-500 mb-2">Live_RSS_Uplink</h6>
+                   <div className="flex items-center gap-2 text-teal-900 animate-pulse"><Share2 size={12}/> FEED_STABLE</div>
+                </div>
             </aside>
 
             <main className="flex-1 flex flex-col p-10 bg-[#0d0f11] relative overflow-hidden">
@@ -109,6 +143,7 @@ const App = () => {
                                 <button key={idx} onClick={() => setActiveEpIdx(idx)} className={`px-5 py-3 border text-[10px] font-black uppercase rounded-xl flex flex-col items-start min-w-[160px] max-w-[220px] transition-all ${activeEpIdx === idx ? 'bg-teal-500 text-black border-white shadow-lg shadow-teal-500/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-teal-500'}`}>
                                     <span className={activeEpIdx === idx ? 'text-black/60 text-[8px]' : 'text-teal-700 text-[8px]'}>Node_{e.node}</span>
                                     <span className="truncate w-full">{e.title}</span>
+                                    {e.audio_url && <Music size={10} className="mt-1 text-teal-400" />}
                                 </button>
                             ))}
                         </div>
@@ -120,7 +155,20 @@ const App = () => {
                                         <button onClick={() => setTerminalMode('brief')} className={`text-[10px] font-black uppercase transition-all ${terminalMode==='brief' ? 'text-teal-500 border-b-2 border-teal-500' : 'text-slate-600'}`}>The Brief</button>
                                         <button onClick={() => setTerminalMode('script')} className={`text-[10px] font-black uppercase transition-all ${terminalMode==='script' ? 'text-teal-500 border-b-2 border-teal-500' : 'text-slate-600'}`}>Master Script</button>
                                     </div>
+                                    
                                     <div className="flex gap-2">
+                                        {/* PRODUCTION BUTTON: Appears in Script mode when all acts are done */}
+                                        {terminalMode === 'script' && getMasterScript().length > 0 && (
+                                            <button 
+                                                onClick={() => produceAudio(activeEp)} 
+                                                disabled={producingId === activeEp.id}
+                                                className={`flex items-center gap-2 px-6 py-2 rounded-full text-[9px] font-black uppercase transition-all ${producingId === activeEp.id ? 'bg-slate-800 text-slate-500' : 'bg-orange-600 text-white hover:bg-white hover:text-orange-600 shadow-lg shadow-orange-600/20'}`}
+                                            >
+                                                {producingId === activeEp.id ? <Loader2 className="animate-spin" size={14}/> : <PlayCircle size={14}/>}
+                                                Initialize Production
+                                            </button>
+                                        )}
+                                        
                                         {terminalMode === 'brief' && <button onClick={() => run('/showrunner/brief', {title: activeEp.title, season_id: activeId})} className="bg-slate-900 text-teal-400 px-4 py-2 rounded-full text-[9px] font-black border border-teal-900/30">Establish Brief</button>}
                                         {terminalMode === 'brief' && activeEp.saved_brief && (
                                             <div className="flex gap-1 ml-4 border-l border-slate-800 pl-4">
@@ -132,6 +180,20 @@ const App = () => {
                                         {terminalMode === 'script' && <button onClick={() => { navigator.clipboard.writeText(JSON.stringify(getMasterScript())); window.alert("JSON_COPIED"); }} className="bg-teal-600 text-black px-6 py-2 rounded-full text-[9px] font-black uppercase hover:bg-white flex items-center gap-2"><Copy size={14}/> Copy JSON</button>}
                                     </div>
                                 </div>
+
+                                {/* MEDIA PLAYER: Appears if audio exists */}
+                                {activeEp.audio_url && (
+                                    <div className="mb-10 p-6 bg-teal-500/5 border border-teal-500/20 rounded-3xl flex items-center gap-6">
+                                        <div className="p-4 bg-teal-500 text-black rounded-2xl"><PlayCircle size={24}/></div>
+                                        <div className="flex-1">
+                                            <div className="text-[10px] font-black text-teal-500 uppercase mb-2">Produced_Audio_Stream</div>
+                                            <audio controls className="w-full h-8 accent-teal-500">
+                                                <source src={activeEp.audio_url} type="audio/mpeg" />
+                                            </audio>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="selection:bg-teal-500 selection:text-black">
                                     {terminalMode === 'brief' && <pre className="text-teal-400 text-[13px] leading-relaxed whitespace-pre-wrap italic uppercase p-4">{activeEp.saved_brief || "Establish brief to unlock production segments."}</pre>}
                                     {terminalMode === 'script' && (
@@ -164,8 +226,10 @@ const App = () => {
                     <div className="flex flex-wrap gap-3 py-6 border-t border-slate-900">
                         {personas.map(p => (
                             <div key={p.id} className="relative group cursor-pointer" onClick={() => setViewPersona(p)}>
-                                <img src={p.portrait} className="w-16 h-16 rounded-2xl border-2 border-slate-800 group-hover:border-teal-500 transition-all bg-black object-cover" />
+                                {/* FIXED: Map portrait correctly with Dicebear fallback */}
+                                <img src={p.portrait || `https://api.dicebear.com/7.x/bottts/svg?seed=${p.name}`} className="w-16 h-16 rounded-2xl border-2 border-slate-800 group-hover:border-teal-500 transition-all bg-black object-cover" />
                                 <button onClick={(e) => { e.stopPropagation(); fetch(`https://shadow-cassandrafiles.pythonanywhere.com/api/v2/delete/persona/${p.id}`, {method:'DELETE'}).then(sync); }} className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all border-2 border-black"><Trash2 size={12}/></button>
+                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-teal-500 text-black text-[6px] font-black px-1 rounded opacity-0 group-hover:opacity-100">{p.mbti}</div>
                             </div>
                         ))}
                     </div>
@@ -176,7 +240,6 @@ const App = () => {
                     <input className="w-full bg-slate-900 p-5 border border-slate-800 text-white font-bold outline-none focus:border-teal-500 uppercase rounded-xl" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
                     <select className="w-full bg-slate-900 p-5 border border-slate-800 text-[10px] text-teal-400 outline-none cursor-pointer rounded-xl" value={nS.relationship} onChange={e => setNS({...nS, relationship: e.target.value})}>{CONFIG.D.map(d => <option key={d} value={d}>{d}</option>)}</select>
                     
-                    {/* RESTORED: Season Length Slider */}
                     <div className="space-y-2">
                         <div className="flex justify-between text-[8px] font-black text-slate-500 uppercase italic">
                             <div className="flex items-center gap-1"><Layers size={10}/> Nodes</div>
@@ -185,7 +248,6 @@ const App = () => {
                         <input type="range" min="1" max="24" className="w-full accent-teal-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer" value={nS.episodes_count} onChange={e => setNS({...nS, episodes_count: e.target.value})} />
                     </div>
 
-                    {/* NEW: Episode Runtime Slider */}
                     <div className="space-y-2">
                         <div className="flex justify-between text-[8px] font-black text-slate-500 uppercase italic">
                             <div className="flex items-center gap-1"><Clock size={10}/> Target Runtime</div>
