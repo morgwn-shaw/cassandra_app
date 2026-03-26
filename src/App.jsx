@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Zap, Trash2, Database, Loader2, UserPlus, Wifi, Cpu, Dice5, PlayCircle, Globe, Calendar, RefreshCw, Terminal, MessageSquare, Archive, BookOpen, Mic, Copy, User, X, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Zap, Trash2, Database, Loader2, UserPlus, Wifi, Cpu, Dice5, PlayCircle, Globe, Calendar, RefreshCw, Terminal, MessageSquare, Archive, BookOpen, Mic, Copy, User, X, ShieldCheck, History, TrendingUp } from 'lucide-react';
 
 const CONFIG = {
     G: ["Male", "Female", "Non-Binary", "Fluid"],
@@ -21,8 +21,8 @@ const App = () => {
             const s = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/season/list");
             const p = await fetch("https://shadow-cassandrafiles.pythonanywhere.com/api/v2/persona/list");
             if (s.ok) {
-                setSeasons(await s.json());
-                setPersonas(await p.json());
+                const sd = await s.json(); setSeasons(Array.isArray(sd) ? sd : []);
+                const pd = await p.json(); setPersonas(Array.isArray(pd) ? pd : []);
             }
         } catch (e) {}
     }, []);
@@ -52,18 +52,19 @@ const App = () => {
 
     return (
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden text-[12px] select-none">
+            {/* PERSONA DETAIL OVERLAY */}
             {viewPersona && (
                 <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-20 backdrop-blur-3xl" onClick={() => setViewPersona(null)}>
                     <div className="bg-[#0d0f11] w-full h-full border border-teal-900/40 rounded-3xl p-12 flex gap-12 overflow-hidden relative shadow-2xl animate-in zoom-in" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setViewPersona(null)} className="absolute top-8 right-8 text-slate-500 hover:text-white"><X size={32}/></button>
+                        <button onClick={() => setViewPersona(null)} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-all"><X size={32}/></button>
                         <div className="w-[300px] shrink-0 space-y-6">
-                            <img src={viewPersona?.portrait} className="w-full aspect-square rounded-2xl border border-teal-900/20 bg-black object-cover" />
+                            <img src={viewPersona?.portrait} className="w-full aspect-square rounded-2xl border border-teal-900/20 bg-black object-cover" onError={e => e.target.src="https://via.placeholder.com/300?text=DNA_LOST"} />
                             <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter">{viewPersona?.name}</h2>
-                            <div className="p-4 bg-red-950/20 border border-red-900/30 text-red-500 rounded-xl text-[10px] uppercase font-black italic flex items-center gap-2"><ShieldAlert size={14}/> Trauma: {viewPersona?.trauma}</div>
+                            <div className="p-4 bg-red-950/20 border border-red-900/30 text-red-500 rounded-xl text-[9px] uppercase font-black italic">Trauma: {viewPersona?.trauma}</div>
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-6 space-y-8 select-text">
                             <div className="bg-black/40 p-8 rounded-2xl border border-slate-800 shadow-inner"><h4 className="text-teal-400 font-black mb-4 uppercase tracking-[0.3em]">DNA_BIO</h4><p className="text-slate-300 text-sm leading-relaxed uppercase">{viewPersona?.archive?.bio}</p></div>
-                            <div className="space-y-4"><h4 className="text-teal-400 font-black uppercase">Anecdote Backlog</h4>
+                            <div className="space-y-4"><h4 className="text-teal-400 font-black uppercase">Anecdote Backlog (30)</h4>
                                 {(viewPersona?.archive?.anecdotes || []).map((a, i) => <p key={i} className="p-5 bg-white/5 rounded-xl text-[11px] italic uppercase border border-white/5 shadow-inner">"{a}"</p>)}
                             </div>
                         </div>
@@ -72,24 +73,23 @@ const App = () => {
             )}
 
             <aside className="w-[280px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shrink-0 shadow-2xl">
-                <div className="flex items-center gap-3 text-teal-500 font-black uppercase tracking-widest border-b border-teal-900/30 pb-4"><Cpu size={16}/> Apex_v163.0</div>
+                <div className="flex items-center gap-3 text-teal-500 font-black uppercase tracking-widest border-b border-teal-900/30 pb-4"><Cpu size={16}/> Apex_v164.0</div>
                 <button onClick={sync} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg shadow-teal-500/10"><Wifi size={14}/> Sync Data</button>
-                <div className="mt-auto border-t border-slate-900 pt-6"><button onClick={() => run('/purge', {})} className="w-full p-3 bg-red-950/20 text-red-500 text-[10px] font-black border border-red-900/30 hover:bg-red-600 transition-all uppercase italic">Purge DNA</button></div>
             </aside>
 
             <main className="flex-1 flex flex-col p-10 bg-[#0d0f11] relative overflow-hidden">
                 {load && <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center backdrop-blur-sm"><Loader2 className="animate-spin text-teal-500" size={48}/></div>}
                 
                 <div className="flex gap-4 mb-6 border-b border-slate-800 pb-6 shrink-0">
-                    <button onClick={() => setActiveId(null)} className={`px-8 py-3 font-black text-[10px] uppercase transition-all ${!activeId ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>Library</button>
-                    {activeId && activeSeason && <div className="flex-1 text-teal-500 font-black uppercase flex items-center gap-2 italic truncate tracking-widest underline decoration-teal-900 underline-offset-8">Production: {activeSeason.title}</div>}
+                    <button onClick={() => {setActiveId(null); setActiveEpIdx(null);}} className={`px-8 py-3 font-black text-[10px] uppercase transition-all ${!activeId ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>Library</button>
+                    {activeId && <div className="flex-1 text-teal-500 font-black uppercase flex items-center gap-2 italic truncate tracking-widest underline decoration-teal-900">Season: {activeSeason?.title}</div>}
                 </div>
 
                 {!activeId ? (
                     <div className="grid grid-cols-2 gap-6 overflow-y-auto custom-scrollbar pr-4">
                         {(seasons || []).map(s => (
                             <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-8 border border-slate-800 rounded-3xl cursor-pointer hover:border-teal-500 transition-all relative group h-fit shadow-xl">
-                                <button onClick={(e) => { e.stopPropagation(); fetch(`https://shadow-cassandrafiles.pythonanywhere.com/api/v2/delete/season/${s.id}`, {method:'DELETE'}).then(sync); }} className="absolute top-6 right-6 text-red-900 hover:text-red-500 transition-all active:scale-125 z-10"><Trash2 size={20}/></button>
+                                <button onClick={(e) => { e.stopPropagation(); run(`/delete/season/${s.id}`, null, 'DELETE'); }} className="absolute top-6 right-6 text-red-900 hover:text-red-500 transition-all active:scale-125 z-10"><Trash2 size={20}/></button>
                                 <h4 className="text-white font-black uppercase italic text-xl tracking-tighter">{s.title}</h4>
                                 <p className="text-[10px] text-teal-600 font-black uppercase mt-1 italic">{s.rel}</p>
                             </div>
@@ -97,9 +97,15 @@ const App = () => {
                     </div>
                 ) : (
                     <div className="flex flex-col h-full gap-6 overflow-hidden animate-in slide-in-from-bottom-4">
-                        <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-2xl shrink-0 shadow-inner">
-                           <h5 className="text-teal-500 text-[9px] font-black uppercase mb-2 flex items-center gap-2 tracking-[0.2em] italic"><BookOpen size={14}/> Forensic_Overview</h5>
-                           <p className="text-[12px] text-slate-300 leading-relaxed uppercase italic">"{activeSeason?.summary || "Audit in progress."}"</p>
+                        <div className="grid grid-cols-3 gap-6 shrink-0">
+                            <div className="col-span-2 bg-teal-950/10 p-6 border border-teal-900/30 rounded-2xl shadow-inner">
+                                <h5 className="text-teal-500 text-[9px] font-black uppercase mb-2 flex items-center gap-2 italic tracking-widest"><BookOpen size={14}/> Season_Summary</h5>
+                                <p className="text-[11px] text-slate-300 leading-relaxed uppercase italic">"{activeSeason?.summary}"</p>
+                            </div>
+                            <div className="bg-black/40 p-6 border border-slate-800 rounded-2xl">
+                                <h5 className="text-teal-400 text-[9px] font-black uppercase mb-2 flex items-center gap-2 italic"><TrendingUp size={14}/> Dynamic_Arc</h5>
+                                <p className="text-[10px] text-slate-500 leading-tight uppercase italic">{activeSeason?.lore?.evolution_arc?.[`act_${(activeEpIdx||0)+1}`] || "Static interaction mode."}</p>
+                            </div>
                         </div>
 
                         <div className="flex flex-wrap gap-2 overflow-y-auto max-h-[140px] custom-scrollbar p-3 border border-slate-900 rounded-2xl bg-black/20 shrink-0">
@@ -127,7 +133,7 @@ const App = () => {
                                                 ))}
                                             </div>
                                         )}
-                                        {terminalMode === 'script' && <button onClick={() => { navigator.clipboard.writeText(JSON.stringify(getMasterScript())); window.alert("JSON_COPIED"); }} className="bg-teal-600 text-black px-6 py-2 rounded-full text-[9px] font-black hover:bg-white flex items-center gap-2 transition-all"><Copy size={14}/> Copy Master JSON</button>}
+                                        {terminalMode === 'script' && <button onClick={() => { navigator.clipboard.writeText(JSON.stringify(getMasterScript())); window.alert("MASTER_JSON_CLIPPED"); }} className="bg-teal-600 text-black px-6 py-2 rounded-full text-[9px] font-black uppercase hover:bg-white flex items-center gap-2 transition-all shadow-xl shadow-teal-500/20"><Copy size={14}/> Copy Master JSON</button>}
                                     </div>
                                 </div>
                                 
@@ -161,13 +167,13 @@ const App = () => {
                         <select className="bg-slate-900 p-5 border border-slate-800 text-[11px] text-teal-500 outline-none rounded-xl cursor-pointer" value={nP.gender} onChange={e => setNP({...nP, gender: e.target.value})}>{CONFIG.G.map(g => <option key={g} value={g}>{g}</option>)}</select>
                         <input className="bg-slate-900 p-5 border border-slate-800 text-[11px] uppercase outline-none focus:border-teal-500 rounded-xl" placeholder="ROLE" value={nP.role} onChange={e => setNP({...nP, role: e.target.value})} />
                     </div>
-                    <div className="relative"><input className="w-full bg-slate-900/50 p-5 border border-slate-800 text-teal-500 text-[10px] outline-none focus:border-teal-500 uppercase rounded-xl" placeholder="CARTESIA_VOICE_ID" value={nP.voice_id} onChange={e => setNP({...nP, voice_id: e.target.value})} /><Mic size={16} className="absolute right-5 top-5 text-teal-900" /></div>
+                    <div className="relative"><input className="w-full bg-slate-900/50 p-5 border border-slate-800 text-teal-500 text-[10px] outline-none focus:border-teal-500 uppercase rounded-xl" placeholder="TTS_VOICE_ID" value={nP.voice_id} onChange={e => setNP({...nP, voice_id: e.target.value})} /><Mic size={16} className="absolute right-5 top-5 text-teal-900" /></div>
                     <button onClick={() => run('/persona/create', nP)} disabled={!nP.name} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] hover:bg-white rounded-xl shadow-xl transition-all shadow-teal-500/20">Commit DNA</button>
                     <div className="flex flex-wrap gap-3 py-6 border-t border-slate-900">
                         {(personas || []).map(p => (
                             <div key={p.id} className="relative group cursor-pointer" onClick={() => setViewPersona(p)}>
                                 <img src={p.portrait} className="w-16 h-16 rounded-2xl border-2 border-slate-800 group-hover:border-teal-500 transition-all bg-black object-cover shadow-xl" onError={e => e.target.src="https://via.placeholder.com/100?text=?"} />
-                                <button onClick={(e) => { e.stopPropagation(); fetch(`https://shadow-cassandrafiles.pythonanywhere.com/api/v2/delete/persona/${p.id}`, {method:'DELETE'}).then(sync); }} className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all border-2 border-black"><Trash2 size={12}/></button>
+                                <button onClick={(e) => { e.stopPropagation(); run(`/delete/persona/${p.id}`, null, 'DELETE'); }} className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all border-2 border-black"><Trash2 size={12}/></button>
                             </div>
                         ))}
                     </div>
