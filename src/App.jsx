@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Trash2, UserPlus, Wifi, Cpu, X, Archive, BookOpen, History, ChevronRight, FileText, Activity, Zap, Terminal, Mic2, Headphones, Sparkles, UserCircle, MessageSquare, Copy, BarChart3, ClipboardCheck, Info } from 'lucide-react';
 
 const BASE_URL = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2";
-const DESC_SAMPLES = ["A jaded specialist.", "A street-smart data broker.", "A tech futurist."];
+const DESC_SAMPLES = ["A jaded specialist with a love for data.", "A street-smart data broker.", "A tech futurist."];
 const CONFIG = {
     G: ["Male", "Female", "Non-Binary", "Fluid"],
     D: ["Unresolved Sexual Tension", "Mentor / Mentee", "Enemies", "Frenemies", "Grudging Respect", "Buddy Cop", "Bitter Rivals", "Strategic Alliance"],
@@ -17,7 +17,7 @@ const App = () => {
     const [personas, setPersonas] = useState([]);
     const [load, setLoad] = useState(false);
     const [status, setStatus] = useState("");
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V198_MASTER_RESTORED", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V198_FACT_LOCKED", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => {
@@ -42,7 +42,7 @@ const App = () => {
     const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 8, target_runtime: 15 });
 
     const createPersona = async () => {
-        setLoad(true); setStatus("Synthesizing DNA...");
+        setLoad(true); setStatus("Synthesizing Subject DNA...");
         try {
             await fetch(`${BASE_URL}/persona/create`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(nP) });
             await sync();
@@ -53,10 +53,13 @@ const App = () => {
         if (!nS.topic || nS.host_ids.length < 2) return addLog("MISSING_DATA", "error");
         setLoad(true);
         try {
-            setStatus("Init..."); const r1 = await fetch(`${BASE_URL}/season/init`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(nS) });
+            setStatus("Establishing Skeleton..."); 
+            const r1 = await fetch(`${BASE_URL}/season/init`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(nS) });
             const s = await r1.json();
-            setStatus("Researching Facts..."); await fetch(`${BASE_URL}/season/research`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
-            setStatus("Lore Sync..."); await fetch(`${BASE_URL}/season/lore`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
+            setStatus("Researching Factual History..."); addLog(`INIT_FACTS: ${s.id}`, "system");
+            await fetch(`${BASE_URL}/season/research`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
+            setStatus("Lore Sync..."); addLog("LORE_SYNC...", "system");
+            await fetch(`${BASE_URL}/season/lore`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
             await sync();
         } catch (e) { addLog(`CRASH: ${e.message}`, "error"); }
         finally { setLoad(false); setStatus(""); }
@@ -94,7 +97,7 @@ const App = () => {
 
     return (
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden text-[11px] select-none">
-            {load && <div className="fixed inset-0 bg-black/90 z-[500] flex flex-col items-center justify-center text-teal-500"><Activity className="animate-pulse mb-6" size={64}/><div className="font-black uppercase tracking-[0.4em]">{status}</div></div>}
+            {load && <div className="fixed inset-0 bg-black/90 z-[500] flex flex-col items-center justify-center text-teal-500 backdrop-blur-md"><Activity className="animate-pulse mb-6" size={64}/><div className="font-black uppercase tracking-[0.4em]">{status}</div></div>}
 
             <aside className="w-[260px] border-r border-slate-800 bg-black/80 flex flex-col shrink-0">
                 <div className="p-4 border-b border-slate-800 text-teal-500 font-black uppercase text-[10px] italic flex items-center gap-2"><Terminal size={14}/> Telemetry</div>
@@ -147,7 +150,7 @@ const App = () => {
                                     <button onClick={() => setActiveEp(null)} className="text-slate-500 hover:text-white uppercase font-black italic tracking-widest text-[10px]">[ Close ]</button>
                                 </div>
                                 {activeSeason?.episodes?.[activeEp]?.full_script_blocks ? (
-                                    <textarea readOnly className="flex-1 bg-slate-950/80 p-8 rounded-3xl border border-teal-900/20 text-teal-300 font-mono text-[9px] resize-none outline-none select-text custom-scrollbar" value={JSON.stringify(activeSeason.episodes[activeEp].full_script_blocks, null, 4)} />
+                                    <textarea readOnly className="w-full h-[50vh] bg-slate-950/80 p-8 rounded-3xl border border-teal-900/20 text-teal-300 font-mono text-[9px] resize-none outline-none select-text custom-scrollbar" value={JSON.stringify(activeSeason.episodes[activeEp].full_script_blocks, null, 4)} />
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-full gap-8">
                                         <Mic2 size={80} className="text-teal-900 animate-pulse" />
@@ -186,7 +189,7 @@ const App = () => {
                         <select className="bg-slate-900/50 p-4 border border-slate-800 text-teal-500 rounded-2xl outline-none uppercase font-black" value={nP.gender} onChange={e => setNP({...nP, gender: e.target.value})}>{CONFIG.G.map(g => <option key={g} value={g}>{g}</option>)}</select>
                         <select className="bg-slate-900/50 p-4 border border-slate-800 text-teal-500 rounded-2xl outline-none uppercase font-black" value={nP.role} onChange={e => setNP({...nP, role: e.target.value})}><option value="Host">Host</option><option value="Analyst">Analyst</option><option value="Skeptic">Skeptic</option></select>
                     </div>
-                    <button onClick={createPersona} disabled={!nP.name || load} className="w-full py-5 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl hover:bg-white transition-all">Commit DNA</button>
+                    <button onClick={createPersona} disabled={!nP.name || load} className="w-full py-5 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl hover:bg-white transition-all">Commit Subject DNA</button>
                     <div className="flex flex-wrap gap-4 pt-6 border-t border-slate-900">
                         {personas?.map(p => <img key={p.id} src={p.portrait} onClick={() => setViewPersona(p)} className="w-14 h-14 rounded-xl border-2 border-slate-800 hover:border-teal-500 cursor-pointer bg-black shadow-xl" alt="p" />)}
                     </div>
