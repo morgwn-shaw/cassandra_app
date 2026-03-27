@@ -17,7 +17,7 @@ const App = () => {
     const [personas, setPersonas] = useState([]);
     const [load, setLoad] = useState(false);
     const [status, setStatus] = useState("");
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V194_FULL_LOAD", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V195_DNA_FIXED", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => {
@@ -105,7 +105,6 @@ const App = () => {
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden text-[11px] select-none">
             {load && <div className="fixed inset-0 bg-black/90 z-[500] flex flex-col items-center justify-center text-teal-500 backdrop-blur-md"><Activity className="animate-pulse mb-6" size={64}/><div className="font-black uppercase tracking-[0.4em]">{status}</div></div>}
 
-            {/* MONITOR */}
             <aside className="w-[260px] border-r border-slate-800 bg-black/80 flex flex-col shrink-0">
                 <div className="p-4 border-b border-slate-800 text-teal-500 font-black uppercase text-[10px] italic flex items-center gap-2"><Terminal size={14}/> Telemetry</div>
                 <div ref={logRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-black/20 custom-scrollbar text-[9px] uppercase">
@@ -113,10 +112,9 @@ const App = () => {
                 </div>
             </aside>
 
-            {/* WORKSPACE */}
             <main className="flex-1 flex flex-col p-8 bg-[#0d0f11] relative overflow-hidden">
                 <div className="flex gap-4 mb-6 border-b border-slate-800 pb-6 shrink-0 items-center">
-                    <button onClick={() => { setActiveId(null); setViewLore(false); setActiveEp(null); }} className={`px-8 py-3 font-black uppercase rounded-lg ${!activeId ? 'bg-teal-500 text-black' : 'bg-slate-800'}`}>Library</button>
+                    <button onClick={() => { setActiveId(null); setViewLore(false); setActiveEp(null); }} className={`px-8 py-3 font-black uppercase rounded-lg ${!activeId ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}>Library</button>
                     {activeId && <div className="flex-1 text-teal-500 font-black uppercase italic truncate text-lg px-4"><ChevronRight className="inline mr-2"/>{activeSeason?.title || "Season"}</div>}
                 </div>
 
@@ -126,7 +124,7 @@ const App = () => {
                             <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-10 border border-slate-800 rounded-[2rem] cursor-pointer hover:border-teal-500 transition-all relative group h-fit shadow-2xl">
                                 <button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/season/${s.id}`, {method:'DELETE'}).then(sync); }} className="absolute top-6 right-6 text-red-900 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={20}/></button>
                                 <h4 className="text-white font-black uppercase italic text-2xl">{s.title}</h4>
-                                <div className="mt-3 text-teal-600 font-black uppercase italic">{s.rel} | {s.runtime}m</div>
+                                <div className="mt-3 text-teal-600 font-black uppercase italic">{s.rel} | {s.runtime}m Target</div>
                             </div>
                         ))}
                     </div>
@@ -204,7 +202,7 @@ const App = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto">
                         {personas?.map(p => (
-                            <button key={p.id} onClick={() => { const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(x => x !== p.id) : [...nS.host_ids, p.id]; setNS({...nS, host_ids: ids.slice(0, 2)}); }} className={`p-4 text-[9px] font-black border truncate rounded-2xl transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400 bg-teal-500/10' : 'border-slate-800 text-slate-600'}`}>{p.name}</button>
+                            <button key={p.id} onClick={() => { const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(x => x !== p.id) : [...nS.host_ids, p.id]; setNS({...nS, host_ids: ids.slice(0, 2)}); }} className={`p-4 text-[9px] font-black border truncate rounded-2xl transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400 bg-teal-500/10 shadow-[0_0_15px_rgba(20,184,166,0.1)]' : 'border-slate-800 text-slate-600'}`}>{p.name}</button>
                         ))}
                     </div>
                     <button onClick={createSeason} disabled={nS.host_ids.length !== 2 || !nS.topic || load} className="w-full py-6 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl">Establish Season</button>
@@ -223,7 +221,11 @@ const App = () => {
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-8 uppercase text-[10px]">
                            <div className="p-8 bg-black/40 border border-slate-800 rounded-2xl leading-relaxed italic">{viewPersona?.dna?.personality_blurb}</div>
-                           <div className="space-y-2 pt-6 border-t border-slate-800">
+                           <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-4 border-l border-teal-900/30 pl-6 text-[9px] uppercase"><div className="font-black text-teal-500 mb-2 italic text-[10px]">20 Cultural Likes</div>{viewPersona?.dna?.likes?.map((l, i) => <span key={i} className="mr-2 opacity-70">[{l}]</span>)}</div>
+                                <div className="space-y-4 border-l border-red-900/30 pl-6 text-[9px] uppercase"><div className="font-black text-red-500 mb-2 italic text-[10px]">Aversions</div>{viewPersona?.dna?.dislikes?.map((d, i) => <span key={i} className="mr-2 opacity-70">[{d}]</span>)}</div>
+                            </div>
+                           <div className="space-y-3 pt-6 border-t border-slate-800">
                                 <h4 className="text-teal-500 font-black uppercase italic text-[10px] mb-4">25 Core Memories</h4>
                                 {viewPersona?.dna?.core_memories?.map((m, i) => <div key={i} className="p-3 bg-white/5 rounded-xl text-[10px] italic leading-relaxed opacity-70">[{i+1}] {m}</div>)}
                             </div>
