@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Trash2, UserPlus, Wifi, Cpu, X, Archive, BookOpen, History, ChevronRight, FileText, Activity, Zap, Terminal, Mic2, Headphones, Sparkles, UserCircle, ClipboardCheck, BarChart3, Copy, Info } from 'lucide-react';
 
 const BASE_URL = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2";
-const DESC_SAMPLES = ["A jaded specialist with a love for data.", "A hyper-enthusiastic tech futurist.", "A retired operative.", "A street-smart data broker."];
+const DESC_SAMPLES = ["A jaded specialist with a love for data.", "A former socialite turned radical.", "A hardware hacker.", "A street-smart data broker."];
 const CONFIG = {
     G: ["Male", "Female", "Non-Binary", "Fluid"],
     D: ["Unresolved Sexual Tension", "Mentor / Mentee", "Enemies", "Frenemies", "Grudging Respect", "Buddy Cop", "Bitter Rivals", "Strategic Alliance"],
@@ -17,7 +17,7 @@ const App = () => {
     const [personas, setPersonas] = useState([]);
     const [load, setLoad] = useState(false);
     const [status, setStatus] = useState("");
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V197_SUMMARY_READY", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_MASTER_V198_RESTORED", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => {
@@ -53,10 +53,13 @@ const App = () => {
         if (!nS.topic || nS.host_ids.length < 2) return addLog("MISSING_DATA", "error");
         setLoad(true);
         try {
-            setStatus("Init Skeleton..."); const r1 = await fetch(`${BASE_URL}/season/init`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(nS) });
+            setStatus("Establishing Skeleton...");
+            const r1 = await fetch(`${BASE_URL}/season/init`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(nS) });
             const s = await r1.json();
-            setStatus("Researching..."); await fetch(`${BASE_URL}/season/research`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
-            setStatus("Lore Sync..."); await fetch(`${BASE_URL}/season/lore`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
+            setStatus("Researching Factual History..."); addLog("RESEARCH_START...", "system");
+            await fetch(`${BASE_URL}/season/research`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
+            setStatus("Lore Handshake..."); addLog("LORE_SYNC...", "system");
+            await fetch(`${BASE_URL}/season/lore`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
             await sync();
         } catch (e) { addLog(`CRASH: ${e.message}`, "error"); }
         finally { setLoad(false); setStatus(""); }
@@ -76,11 +79,16 @@ const App = () => {
                 addLog(`ACT_${i}_OK`, "llm");
                 await new Promise(r => setTimeout(r, 1000));
             }
+            setStatus("Finalizing...");
+            const resAss = await fetch(`${BASE_URL}/episode/assess`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, sample: JSON.stringify(allBlocks.slice(0, 5)) }) });
+            const assData = await resAss.json();
+
             const currentSeason = seasons.find(s => s.id === activeId);
             const updatedEpisodes = [...currentSeason.episodes];
             updatedEpisodes[epIdx].full_script_blocks = allBlocks;
-            setSeasons(seasons.map(s => s.id === activeId ? {...s, episodes: updatedEpisodes} : s));
-            addLog("PRODUCTION_FINALIZED", "system");
+            updatedEpisodes[epIdx].assessment = assData.assessment;
+            await fetch(`${BASE_URL}/episode/save_full`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), episodes: updatedEpisodes }) });
+            await sync();
         } finally { setLoad(false); setStatus(""); }
     };
 
@@ -105,7 +113,7 @@ const App = () => {
 
             <main className="flex-1 flex flex-col p-8 bg-[#0d0f11] relative overflow-hidden">
                 <div className="flex gap-4 mb-6 border-b border-slate-800 pb-6 shrink-0 items-center">
-                    <button onClick={() => { setActiveId(null); setActiveEp(null); }} className={`px-8 py-3 font-black uppercase rounded-lg ${!activeId ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}>Library</button>
+                    <button onClick={() => { setActiveId(null); setViewLore(false); setActiveEp(null); }} className={`px-8 py-3 font-black uppercase rounded-lg ${!activeId ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}>Library</button>
                     {activeId && (
                         <>
                             <div className="flex-1 text-teal-500 font-black uppercase italic truncate text-lg px-4"><ChevronRight className="inline mr-2"/>{activeSeason?.title || "Season"}</div>
@@ -115,7 +123,7 @@ const App = () => {
                 </div>
 
                 {!activeId ? (
-                    <div className="grid grid-cols-2 gap-8 overflow-y-auto pr-4 custom-scrollbar">
+                    <div className="grid grid-cols-2 gap-8 overflow-y-auto custom-scrollbar pr-4">
                         {seasons?.map(s => (
                             <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-10 border border-slate-800 rounded-[2rem] cursor-pointer hover:border-teal-500 transition-all relative group h-fit shadow-2xl">
                                 <button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/season/${s.id}`, {method:'DELETE'}).then(sync); }} className="absolute top-6 right-6 text-red-900 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={20}/></button>
@@ -128,7 +136,7 @@ const App = () => {
                     <div className="flex flex-col h-full gap-8 overflow-hidden">
                         {viewLore ? (
                             <div className="flex-1 bg-black/30 border border-slate-800 rounded-3xl p-10 overflow-y-auto custom-scrollbar space-y-6">
-                                <div className="p-6 bg-teal-950/20 border border-teal-900/30 rounded-2xl mb-6">
+                                <div className="p-6 bg-teal-950/20 border border-teal-900/30 rounded-2xl mb-6 shadow-xl">
                                     <h4 className="text-teal-500 font-black uppercase italic mb-2 flex items-center gap-2"><Zap size={16}/> Relationship Projection</h4>
                                     <p className="text-slate-300 uppercase leading-relaxed text-[10px]">{activeSeason?.future_lore || "No projection mapped."}</p>
                                 </div>
@@ -137,7 +145,7 @@ const App = () => {
                                 ))}
                             </div>
                         ) : activeEp !== null ? (
-                            <div className="flex-1 bg-black/30 border border-slate-800 rounded-[2.5rem] p-8 flex flex-col overflow-hidden relative">
+                            <div className="flex-1 bg-black/30 border border-slate-800 rounded-[2.5rem] p-8 flex flex-col overflow-hidden relative shadow-2xl">
                                 <div className="flex justify-between items-center mb-6 shrink-0">
                                     <div className="flex gap-6 text-[10px] font-black uppercase italic text-teal-500 bg-teal-500/5 px-6 py-2 rounded-full border border-teal-500/20 items-center">
                                         <BarChart3 size={14}/>
@@ -147,11 +155,17 @@ const App = () => {
                                     <button onClick={() => setActiveEp(null)} className="text-slate-500 hover:text-white uppercase font-black italic tracking-widest text-[10px]">[ Close ]</button>
                                 </div>
                                 {activeSeason?.episodes?.[activeEp]?.full_script_blocks ? (
-                                    <textarea readOnly className="flex-1 bg-slate-950/80 p-8 rounded-3xl border border-teal-900/20 text-teal-300 font-mono text-[9px] resize-none outline-none select-text custom-scrollbar" value={JSON.stringify(activeSeason.episodes[activeEp].full_script_blocks, null, 4)} />
+                                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
+                                        <textarea readOnly className="w-full h-[50vh] bg-slate-950/80 p-8 rounded-3xl border border-teal-900/20 text-teal-300 font-mono text-[9px] resize-none outline-none select-text custom-scrollbar" value={JSON.stringify(activeSeason.episodes[activeEp].full_script_blocks, null, 4)} />
+                                        <div className="bg-teal-950/10 p-8 border border-teal-900/30 rounded-3xl shadow-xl">
+                                            <h4 className="text-teal-500 font-black uppercase italic flex items-center gap-2 mb-4"><ClipboardCheck size={20}/> Showrunner Report</h4>
+                                            <p className="text-slate-300 uppercase text-[10px] leading-relaxed">{activeSeason.episodes[activeEp].assessment}</p>
+                                        </div>
+                                    </div>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-full gap-8">
                                         <Mic2 size={80} className="text-teal-900 animate-pulse" />
-                                        <button onClick={() => runProduction(activeEp)} className="px-12 py-5 bg-teal-500 text-black font-black uppercase text-[12px] rounded-2xl shadow-xl">Launch JSON Engine</button>
+                                        <button onClick={() => runProduction(activeEp)} className="px-12 py-5 bg-teal-500 text-black font-black uppercase text-[12px] rounded-2xl shadow-xl hover:scale-105 transition-all">Launch JSON Engine</button>
                                     </div>
                                 )}
                             </div>
@@ -159,14 +173,15 @@ const App = () => {
                             <div className="flex flex-col h-full gap-8 overflow-hidden">
                                 <div className="bg-slate-900/50 p-10 border border-slate-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
                                     <div className="absolute top-0 right-0 p-8 text-teal-900 group-hover:text-teal-500 transition-colors"><Info size={40}/></div>
-                                    <h3 className="text-teal-500 font-black uppercase italic tracking-widest mb-6 flex items-center gap-3"><BookOpen size={20}/> Season Briefing</h3>
-                                    <p className="text-slate-200 text-lg leading-relaxed uppercase select-text italic relative z-10">{activeSeason?.description || "Research in progress..."}</p>
+                                    <h3 className="text-teal-500 font-black uppercase italic tracking-widest mb-6 flex items-center gap-3"><BookOpen size={20}/> Factual Season Briefing</h3>
+                                    <p className="text-slate-200 text-lg leading-relaxed uppercase select-text italic relative z-10">{activeSeason?.description || "Researching factual data..."}</p>
                                 </div>
                                 <div className="grid grid-cols-3 gap-6 overflow-y-auto pr-4 custom-scrollbar">
                                     {activeSeason?.episodes?.map((e, idx) => (
                                         <div key={idx} onClick={() => setActiveEp(idx)} className="p-8 border border-slate-800 bg-slate-900/30 rounded-[2rem] hover:border-teal-500 cursor-pointer text-center h-fit group transition-all shadow-lg">
                                             <div className="text-[10px] text-teal-800 font-black uppercase mb-3 italic">Node_{idx + 1}</div>
                                             <h5 className="text-white font-black uppercase italic text-lg mb-4">{e?.title || "Researching..."}</h5>
+                                            {e.full_script_blocks && <div className="mt-4 text-teal-500 text-[10px] font-black uppercase italic flex items-center justify-center gap-2"><Zap size={12}/> json_locked</div>}
                                         </div>
                                     ))}
                                 </div>
@@ -181,12 +196,9 @@ const App = () => {
                     <h3 className="text-teal-500 font-black uppercase border-b border-teal-900/30 pb-3 tracking-widest italic flex items-center gap-2"><UserPlus size={18}/> Identity Spawn</h3>
                     <input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-white font-bold rounded-xl outline-none focus:border-teal-500 uppercase text-[12px]" placeholder="NAME" value={nP.name} onChange={e => setNP({...nP, name: e.target.value})} />
                     <textarea className="w-full bg-slate-900/50 p-4 border border-slate-800 text-slate-300 rounded-xl outline-none focus:border-teal-500 uppercase text-[10px] h-32 leading-relaxed" placeholder="DESCRIPTION" value={nP.description} onChange={e => setNP({...nP, description: e.target.value})} />
-                    <div className="grid grid-cols-2 gap-4">
-                        <select className="bg-slate-900/50 p-4 border border-slate-800 text-teal-500 rounded-2xl outline-none uppercase font-black" value={nP.gender} onChange={e => setNP({...nP, gender: e.target.value})}>{CONFIG.G.map(g => <option key={g} value={g}>{g}</option>)}</select>
-                        <button onClick={createPersona} disabled={!nP.name || load} className="w-full py-5 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl">Commit DNA</button>
-                    </div>
+                    <button onClick={createPersona} disabled={!nP.name || load} className="w-full py-5 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl hover:bg-white transition-all">Commit Subject DNA</button>
                     <div className="flex flex-wrap gap-4 pt-6 border-t border-slate-900">
-                        {personas?.map(p => <img key={p.id} src={p.portrait} onClick={() => setViewPersona(p)} className="w-14 h-14 rounded-xl border-2 border-slate-800 hover:border-teal-500 cursor-pointer bg-black" />)}
+                        {personas?.map(p => <img key={p.id} src={p.portrait} onClick={() => setViewPersona(p)} className="w-14 h-14 rounded-xl border-2 border-slate-800 hover:border-teal-500 cursor-pointer bg-black shadow-xl" alt="p" />)}
                     </div>
                 </div>
 
