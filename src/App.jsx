@@ -15,7 +15,6 @@ const CONFIG = {
 
 const App = () => {
     const [activeId, setActiveId] = useState(null); 
-    const [activeEpIdx, setActiveEpIdx] = useState(null);
     const [viewPersona, setViewPersona] = useState(null); 
     const [seasons, setSeasons] = useState([]);
     const [personas, setPersonas] = useState([]);
@@ -32,7 +31,7 @@ const App = () => {
                 setSeasons(await s.json()); 
                 setPersonas(await p.json()); 
             }
-        } catch (e) { console.error("Sync Failure"); }
+        } catch (e) { console.error("Sync Error"); }
     }, []);
 
     useEffect(() => { sync(); }, [sync]);
@@ -42,7 +41,7 @@ const App = () => {
             const r = await fetch(BASE_URL + path, {
                 method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
             });
-            const d = await r.json(); await sync(); return d;
+            await sync(); return await r.json();
         } catch (e) { window.alert(`FAIL: ${e.message}`); } finally { setLoad(false); }
     };
 
@@ -54,11 +53,11 @@ const App = () => {
                 <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-20 backdrop-blur-3xl" onClick={() => setViewPersona(null)}>
                     <div className="bg-[#0d0f11] w-full h-full border border-teal-900/40 rounded-3xl p-12 flex gap-12 overflow-hidden relative" onClick={e => e.stopPropagation()}>
                         <button onClick={() => setViewPersona(null)} className="absolute top-8 right-8 text-slate-500 hover:text-white"><X size={32}/></button>
-                        <div className="w-[300px] shrink-0 space-y-6">
-                            <img src={viewPersona?.portrait} className="w-full aspect-square rounded-2xl border border-teal-900/20 bg-black object-cover" alt="portrait" />
+                        <div className="w-[300px] space-y-6">
+                            <img src={viewPersona?.portrait} className="w-full aspect-square rounded-2xl border border-teal-900/20 bg-black" alt="portrait" />
                             <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter">{viewPersona?.name}</h2>
                         </div>
-                        <div className="flex-1 overflow-y-auto pr-6 space-y-8 select-text">
+                        <div className="flex-1 overflow-y-auto space-y-8 select-text">
                             <div className="bg-black/40 p-8 rounded-2xl border border-slate-800"><p className="text-slate-300 text-sm leading-relaxed uppercase">{viewPersona?.archive?.bio}</p></div>
                             <div className="p-4 border border-slate-800 rounded-xl uppercase text-slate-500 italic">"{viewPersona?.description}"</div>
                         </div>
@@ -68,11 +67,12 @@ const App = () => {
 
             <aside className="w-[260px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shrink-0 shadow-2xl">
                 <div className="flex items-center gap-3 text-teal-500 font-black uppercase tracking-widest border-b border-teal-900/30 pb-4"><Cpu size={16}/> Apex_v166.0</div>
-                <button onClick={sync} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all"><Wifi size={14}/> Sync Data</button>
+                <button onClick={sync} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all shadow-lg shadow-teal-500/10"><Wifi size={14}/> Sync Data</button>
             </aside>
 
             <main className="flex-1 flex flex-col p-10 bg-[#0d0f11] relative overflow-hidden">
                 {load && <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center backdrop-blur-sm"><Loader2 className="animate-spin text-teal-500" size={48}/></div>}
+                
                 <div className="flex gap-4 mb-6 border-b border-slate-800 pb-6 shrink-0">
                     <button onClick={() => setActiveId(null)} className={`px-8 py-3 font-black text-[10px] uppercase transition-all ${!activeId ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>Library</button>
                 </div>
@@ -88,11 +88,9 @@ const App = () => {
                     </div>
                 ) : (
                     <div className="flex flex-col h-full gap-6">
-                        <div className="flex flex-wrap gap-2 overflow-y-auto max-h-[140px] p-3 border border-slate-900 rounded-2xl bg-black/20 shrink-0">
+                        <div className="flex flex-wrap gap-2 overflow-y-auto max-h-[140px] custom-scrollbar p-3 border border-slate-900 rounded-2xl bg-black/20 shrink-0">
                             {activeSeason?.episodes?.map((e, idx) => (
-                                <button key={idx} onClick={() => setActiveEpIdx(idx)} className={`px-5 py-3 border text-[10px] font-black uppercase rounded-xl transition-all ${activeEpIdx === idx ? 'bg-teal-500 text-black' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
-                                    Node_{e.node}: {e.title}
-                                </button>
+                                <div key={idx} className="px-5 py-3 border text-[10px] font-black uppercase rounded-xl bg-slate-900 border-slate-800 text-slate-400">Node_{e.node}: {e.title}</div>
                             ))}
                         </div>
                     </div>
@@ -112,25 +110,20 @@ const App = () => {
                     <textarea className="w-full h-24 bg-slate-900/50 p-4 border border-slate-800 text-slate-400 text-[10px] outline-none focus:border-teal-500 uppercase rounded-xl resize-none" placeholder="BACKSTORY (MAX 250 CHARS)" maxLength={250} value={nP.description} onChange={e => setNP({...nP, description: e.target.value})} />
                     <button onClick={() => run('/persona/create', nP)} disabled={!nP.name || !nP.description} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] rounded-xl hover:bg-white transition-all disabled:opacity-30">Commit DNA</button>
                     <div className="flex flex-wrap gap-2 pt-4">
-                        {personas.map(p => (<img key={p.id} src={p.portrait} onClick={() => setViewPersona(p)} className="w-12 h-12 rounded-xl border border-slate-800 hover:border-teal-500 cursor-pointer bg-black" alt={p.name} />))}
+                        {personas.map(p => (<img key={p.id} src={p.portrait} onClick={() => setViewPersona(p)} className="w-12 h-12 rounded-xl border border-slate-800 hover:border-teal-500 cursor-pointer bg-black" alt="p" />))}
                     </div>
                 </div>
 
                 <div className="space-y-6 border-t border-slate-800 pt-8">
                     <h3 className="text-teal-500 text-[11px] font-black uppercase flex items-center gap-2"><Archive size={18}/> Establish Season</h3>
-                    <input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-white uppercase font-bold rounded-xl outline-none" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
+                    <input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-white uppercase font-bold rounded-xl outline-none focus:border-teal-500" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
                     <select className="w-full bg-slate-900/50 p-4 border border-slate-800 text-teal-500 uppercase rounded-xl outline-none" value={nS.relationship} onChange={e => setNS({...nS, relationship: e.target.value})}>{CONFIG.D.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                    <div className="space-y-4 bg-black/40 p-4 rounded-xl border border-slate-800">
-                        <div className="flex justify-between text-[10px] uppercase font-black text-slate-500 italic"><span>Nodes: {nS.episodes_count}</span><span>Runtime: {nS.target_runtime}m</span></div>
-                        <input type="range" min="1" max="24" className="w-full accent-teal-500" value={nS.episodes_count} onChange={e => setNS({...nS, episodes_count: parseInt(e.target.value)})} />
-                        <input type="range" min="5" max="20" className="w-full accent-teal-500" value={nS.target_runtime} onChange={e => setNS({...nS, target_runtime: parseInt(e.target.value)})} />
-                    </div>
                     <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 bg-black/20 rounded-xl custom-scrollbar border border-slate-800">
                         {personas.map(p => (
                             <button key={p.id} onClick={() => { 
                                 const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(x => x !== p.id) : [...nS.host_ids, p.id]; 
                                 setNS({...nS, host_ids: ids.slice(0, 2)}); 
-                            }} className={`p-2 text-[8px] font-black border truncate uppercase rounded-md transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400 bg-teal-500/10 shadow-[0_0_10px_rgba(20,184,166,0.1)]' : 'border-slate-800 text-slate-500'}`}>{p.name}</button>
+                            }} className={`p-2 text-[8px] font-black border truncate uppercase rounded-md transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400 bg-teal-500/10' : 'border-slate-800 text-slate-500'}`}>{p.name}</button>
                         ))}
                     </div>
                     <button onClick={() => run('/season/reconcile', nS)} disabled={nS.host_ids.length !== 2 || !nS.topic} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] rounded-xl hover:bg-white transition-all disabled:opacity-30">Establish Season</button>
