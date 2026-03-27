@@ -1,125 +1,143 @@
-import os
-import json
-import random
-import asyncio
-import aiohttp
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-import google.generativeai as genai
-from tinydb import TinyDB, Query
+import React, { useState, useEffect, useCallback } from 'react';
+import { Trash2, Loader2, UserPlus, Wifi, Cpu, RefreshCw, X, Archive, Clock, Layers } from 'lucide-react';
 
-# --- [CREDENTIALS] ---
-genai.configure(api_key="AIzaSyA50nT7Eb3z-34rB7dbQgib3U_NKx0Elm0")
-DEEPGRAM_API_KEY = "3a7c16c4e200d9755030b744e8d16a146448ec62"
+const BASE_URL = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2";
 
-# --- [MODEL SELECTOR] ---
-def get_apex():
-    """LOCKED: Gemini 3.1 Pro Priority."""
-    try:
-        manifest = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        target = "models/gemini-3.1-pro"
-        if target not in manifest:
-            target = next((t for t in ['models/gemini-3.0-pro', 'models/gemini-1.5-pro'] if t in manifest), manifest[0])
-        m_basic = genai.GenerativeModel(target)
-        m_grounded = genai.GenerativeModel(model_name=target, tools=['google_search'])
-        return m_basic, m_grounded, target
-    except Exception:
-        m = genai.GenerativeModel('models/gemini-2.5-flash')
-        return m, m, "models/gemini-2.5-pro-emergency"
+const CONFIG = {
+    G: ["Male", "Female", "Non-Binary", "Fluid"],
+    D: ["Unresolved Sexual Tension", "Mentor / Mentee", "Enemies", "Frenemies", "Grudging Respect", "Buddy Cop", "Bitter Rivals", "Strategic Alliance"],
+    EXAMPLES: [
+        "A hyper-fixated conspiracy theorist who thinks birds are government drones.",
+        "A former corporate spy who now reviews kitchen appliances with extreme intensity.",
+        "A bored billionaire who bought a podcast kit to feel 'relatable'."
+    ]
+};
 
-app = FastAPI()
+const App = () => {
+    const [activeId, setActiveId] = useState(null); 
+    const [activeEpIdx, setActiveEpIdx] = useState(null);
+    const [viewPersona, setViewPersona] = useState(null); 
+    const [seasons, setSeasons] = useState([]);
+    const [personas, setPersonas] = useState([]);
+    const [load, setLoad] = useState(false);
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    const [nP, setNP] = useState({ name: '', role: 'Forensic Analyst', description: '', gender: 'Male' });
+    const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 10, target_runtime: 15 });
 
-# --- [PERSISTENCE] ---
-db = TinyDB('apex_db.json')
-personas_table = db.table('personas')
-seasons_table = db.table('seasons')
+    const sync = useCallback(async () => {
+        try {
+            const s = await fetch(`${BASE_URL}/season/list`);
+            const p = await fetch(`${BASE_URL}/persona/list`);
+            if (s.ok) { 
+                setSeasons(await s.json()); 
+                setPersonas(await p.json()); 
+            }
+        } catch (e) { console.error("Sync Failure"); }
+    }, []);
 
-if not os.path.exists('static/podcasts'):
-    os.makedirs('static/podcasts')
-app.mount("/static", StaticFiles(directory="static"), name="static")
+    useEffect(() => { sync(); }, [sync]);
 
-# --- [SCHEMAS] ---
-class PersonaCreate(BaseModel):
-    name: str
-    role: str
-    description: str
-    gender: str
+    const run = async (path, body) => {
+        setLoad(true); try {
+            const r = await fetch(BASE_URL + path, {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+            });
+            const d = await r.json(); await sync(); return d;
+        } catch (e) { window.alert(`FAIL: ${e.message}`); } finally { setLoad(false); }
+    };
 
-class SeasonReconcile(BaseModel):
-    topic: str
-    relationship: str
-    host_ids: list
-    episodes_count: int
-    target_runtime: int
+    const activeSeason = seasons.find(x => x.id === activeId);
 
-# --- [ROUTES] ---
+    return (
+        <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden text-[12px] select-none">
+            {viewPersona && (
+                <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-20 backdrop-blur-3xl" onClick={() => setViewPersona(null)}>
+                    <div className="bg-[#0d0f11] w-full h-full border border-teal-900/40 rounded-3xl p-12 flex gap-12 overflow-hidden relative" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setViewPersona(null)} className="absolute top-8 right-8 text-slate-500 hover:text-white"><X size={32}/></button>
+                        <div className="w-[300px] shrink-0 space-y-6">
+                            <img src={viewPersona?.portrait} className="w-full aspect-square rounded-2xl border border-teal-900/20 bg-black object-cover" alt="portrait" />
+                            <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter">{viewPersona?.name}</h2>
+                        </div>
+                        <div className="flex-1 overflow-y-auto pr-6 space-y-8 select-text">
+                            <div className="bg-black/40 p-8 rounded-2xl border border-slate-800"><p className="text-slate-300 text-sm leading-relaxed uppercase">{viewPersona?.archive?.bio}</p></div>
+                            <div className="p-4 border border-slate-800 rounded-xl uppercase text-slate-500 italic">"{viewPersona?.description}"</div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-@app.get("/api/v2/persona/list")
-async def list_personas():
-    return personas_table.all()
+            <aside className="w-[260px] border-r border-slate-800 bg-black/60 p-8 flex flex-col gap-6 shrink-0 shadow-2xl">
+                <div className="flex items-center gap-3 text-teal-500 font-black uppercase tracking-widest border-b border-teal-900/30 pb-4"><Cpu size={16}/> Apex_v166.0</div>
+                <button onClick={sync} className="w-full p-4 border border-teal-900/30 text-teal-500 text-[10px] font-black uppercase hover:bg-teal-500 hover:text-black rounded transition-all"><Wifi size={14}/> Sync Data</button>
+            </aside>
 
-@app.post("/api/v2/persona/create")
-async def create_persona(req: PersonaCreate):
-    m_basic, _, _ = get_apex()
-    prompt = f"Create full MBTI, 30 anecdotes, and bio for {req.name} ({req.role}). Backstory: {req.description}. Return ONLY JSON: {{'mbti': '', 'anecdotes': [], 'bio': '', 'vocal_vibe': 'elitist|sarcastic|cynical|energetic'}}"
-    response = m_basic.generate_content(prompt)
-    details = json.loads(response.text)
-    
-    vibe = details.get('vocal_vibe', 'default')
-    v_map = {
-        "Female": {"elitist": "hera", "sarcastic": "stella", "default": "athena"},
-        "Male": {"cynical": "orpheus", "energetic": "orion", "default": "zeus"},
-        "Non-Binary": {"default": "stella"},
-        "Fluid": {"default": "orpheus"}
-    }
-    pool = v_map.get(req.gender, v_map["Female"])
-    voice_id = pool.get(vibe, pool["default"])
+            <main className="flex-1 flex flex-col p-10 bg-[#0d0f11] relative overflow-hidden">
+                {load && <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center backdrop-blur-sm"><Loader2 className="animate-spin text-teal-500" size={48}/></div>}
+                <div className="flex gap-4 mb-6 border-b border-slate-800 pb-6 shrink-0">
+                    <button onClick={() => setActiveId(null)} className={`px-8 py-3 font-black text-[10px] uppercase transition-all ${!activeId ? 'bg-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800'}`}>Library</button>
+                </div>
 
-    new_p = {
-        "id": str(random.randint(1000, 9999)), "name": req.name, "role": req.role,
-        "description": req.description, "gender": req.gender, "mbti": details['mbti'],
-        "voice_id": voice_id, "archive": details,
-        "portrait": f"https://api.dicebear.com/7.x/bottts/svg?seed={req.name}"
-    }
-    personas_table.insert(new_p)
-    return new_p
+                {!activeId ? (
+                    <div className="grid grid-cols-2 gap-6 overflow-y-auto pr-4 custom-scrollbar">
+                        {seasons.map(s => (
+                            <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-8 border border-slate-800 rounded-3xl cursor-pointer hover:border-teal-500 transition-all relative group h-fit shadow-xl">
+                                <button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/season/${s.id}`, {method:'DELETE'}).then(sync); }} className="absolute top-6 right-6 text-red-900 hover:text-red-500 transition-all"><Trash2 size={20}/></button>
+                                <h4 className="text-white font-black uppercase italic text-xl tracking-tighter">{s.title}</h4>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col h-full gap-6">
+                        <div className="flex flex-wrap gap-2 overflow-y-auto max-h-[140px] p-3 border border-slate-900 rounded-2xl bg-black/20 shrink-0">
+                            {activeSeason?.episodes?.map((e, idx) => (
+                                <button key={idx} onClick={() => setActiveEpIdx(idx)} className={`px-5 py-3 border text-[10px] font-black uppercase rounded-xl transition-all ${activeEpIdx === idx ? 'bg-teal-500 text-black' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
+                                    Node_{e.node}: {e.title}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </main>
 
-@app.post("/api/v2/season/reconcile")
-async def reconcile_season(req: SeasonReconcile):
-    _, m_grounded, _ = get_apex()
-    hosts = [p for p in personas_table.all() if p['id'] in req.host_ids]
-    prompt = f"Build {req.episodes_count} episodes for '{req.topic}'. Relationship: {req.relationship}. Hosts: {hosts[0]['name']} & {hosts[1]['name']}. 100% Factual. JSON list: [{{'node': 1, 'title': '', 'summary': ''}}]"
-    response = m_grounded.generate_content(prompt)
-    episodes = json.loads(response.text)
-    
-    for ep in episodes: ep.update({"id": f"ep_{random.randint(1000,9999)}", "acts": {}, "saved_brief": "", "audio_url": ""})
-        
-    season = {
-        "id": str(random.randint(1000, 9999)), "title": req.topic, "rel": req.relationship,
-        "target_runtime": req.target_runtime, "ep_count": req.episodes_count, "episodes": episodes
-    }
-    seasons_table.insert(season)
-    return season
+            <aside className="w-[380px] bg-black/60 p-10 border-l border-slate-800 overflow-y-auto shrink-0 flex flex-col gap-10 custom-scrollbar shadow-2xl">
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                        <h3 className="text-teal-500 text-[11px] font-black uppercase flex items-center gap-2"><UserPlus size={18}/> Identity Spawn</h3>
+                        <button onClick={() => setNP({...nP, description: CONFIG.EXAMPLES[Math.floor(Math.random()*CONFIG.EXAMPLES.length)]})} className="text-[8px] text-slate-600 hover:text-teal-500 uppercase font-black"><RefreshCw size={10} className="inline mr-1"/> Randomize</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <input className="bg-slate-900/50 p-4 border border-slate-800 text-white uppercase font-bold rounded-xl outline-none" placeholder="NAME" value={nP.name} onChange={e => setNP({...nP, name: e.target.value})} />
+                        <select className="bg-slate-900/50 p-4 border border-slate-800 text-teal-500 uppercase rounded-xl outline-none" value={nP.gender} onChange={e => setNP({...nP, gender: e.target.value})}>{CONFIG.G.map(g => <option key={g} value={g}>{g}</option>)}</select>
+                    </div>
+                    <textarea className="w-full h-24 bg-slate-900/50 p-4 border border-slate-800 text-slate-400 text-[10px] outline-none focus:border-teal-500 uppercase rounded-xl resize-none" placeholder="BACKSTORY (MAX 250 CHARS)" maxLength={250} value={nP.description} onChange={e => setNP({...nP, description: e.target.value})} />
+                    <button onClick={() => run('/persona/create', nP)} disabled={!nP.name || !nP.description} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] rounded-xl hover:bg-white transition-all disabled:opacity-30">Commit DNA</button>
+                    <div className="flex flex-wrap gap-2 pt-4">
+                        {personas.map(p => (<img key={p.id} src={p.portrait} onClick={() => setViewPersona(p)} className="w-12 h-12 rounded-xl border border-slate-800 hover:border-teal-500 cursor-pointer bg-black" alt={p.name} />))}
+                    </div>
+                </div>
 
-@app.get("/api/v2/season/list")
-async def list_seasons(): return seasons_table.all()
+                <div className="space-y-6 border-t border-slate-800 pt-8">
+                    <h3 className="text-teal-500 text-[11px] font-black uppercase flex items-center gap-2"><Archive size={18}/> Establish Season</h3>
+                    <input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-white uppercase font-bold rounded-xl outline-none" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
+                    <select className="w-full bg-slate-900/50 p-4 border border-slate-800 text-teal-500 uppercase rounded-xl outline-none" value={nS.relationship} onChange={e => setNS({...nS, relationship: e.target.value})}>{CONFIG.D.map(d => <option key={d} value={d}>{d}</option>)}</select>
+                    <div className="space-y-4 bg-black/40 p-4 rounded-xl border border-slate-800">
+                        <div className="flex justify-between text-[10px] uppercase font-black text-slate-500 italic"><span>Nodes: {nS.episodes_count}</span><span>Runtime: {nS.target_runtime}m</span></div>
+                        <input type="range" min="1" max="24" className="w-full accent-teal-500" value={nS.episodes_count} onChange={e => setNS({...nS, episodes_count: parseInt(e.target.value)})} />
+                        <input type="range" min="5" max="20" className="w-full accent-teal-500" value={nS.target_runtime} onChange={e => setNS({...nS, target_runtime: parseInt(e.target.value)})} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 bg-black/20 rounded-xl custom-scrollbar border border-slate-800">
+                        {personas.map(p => (
+                            <button key={p.id} onClick={() => { 
+                                const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(x => x !== p.id) : [...nS.host_ids, p.id]; 
+                                setNS({...nS, host_ids: ids.slice(0, 2)}); 
+                            }} className={`p-2 text-[8px] font-black border truncate uppercase rounded-md transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400 bg-teal-500/10 shadow-[0_0_10px_rgba(20,184,166,0.1)]' : 'border-slate-800 text-slate-500'}`}>{p.name}</button>
+                        ))}
+                    </div>
+                    <button onClick={() => run('/season/reconcile', nS)} disabled={nS.host_ids.length !== 2 || !nS.topic} className="w-full py-4 bg-teal-500 text-black font-black uppercase text-[10px] rounded-xl hover:bg-white transition-all disabled:opacity-30">Establish Season</button>
+                </div>
+            </aside>
+        </div>
+    );
+};
 
-@app.delete("/api/v2/delete/persona/{id}")
-async def delete_p(id: str):
-    personas_table.remove(Query().id == id)
-    return {"status": "ok"}
-
-@app.delete("/api/v2/delete/season/{id}")
-async def delete_s(id: str):
-    seasons_table.remove(Query().id == id)
-    return {"status": "ok"}
+export default App;
