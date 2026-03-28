@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Trash2, UserPlus, Wifi, Cpu, X, Archive, BookOpen, History, ChevronRight, FileText, Activity, Zap, Terminal, Mic2, Headphones, Sparkles, UserCircle, MessageSquare, Copy, BarChart3, ClipboardCheck, Info, Volume2, Wand2, Radio } from 'lucide-react';
+import { Trash2, UserPlus, Wifi, Cpu, X, Archive, BookOpen, History, ChevronRight, FileText, Activity, Zap, Terminal, Mic2, Headphones, Sparkles, UserCircle, MessageSquare, Copy, BarChart3, ClipboardCheck, Info, Volume2, Wand2, Radio, Star, AlertTriangle, CheckCircle } from 'lucide-react';
 
 const BASE_URL = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2";
 const CONFIG = { 
@@ -18,7 +18,7 @@ const App = () => {
     const [status, setStatus] = useState("");
     const [audioManifest, setAudioManifest] = useState(null);
     const [masterAudio, setMasterAudio] = useState(null);
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V215_RESTORED_READY", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V216_FULL_STACK_RESTORED", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => setLogs(p => [...p, { t: new Date().toLocaleTimeString(), m: typeof m === 'string' ? m : JSON.stringify(m), type }].slice(-50));
@@ -27,7 +27,7 @@ const App = () => {
         try {
             const res = await fetch(`${BASE_URL}/system/status`);
             const data = await res.json();
-            addLog(`SYS: Python ${data.python.split(' ')[0]} | HOSTS: ${data.persona_count} | SEASONS: ${data.season_count}`, "system");
+            addLog(`SYS: Python ${data.python.split(' ')[0]} | HOSTS: ${data.hosts} | SEASONS: ${data.seasons}`, "system");
         } catch (e) { addLog("PROBE_FAIL", "error"); }
     };
 
@@ -47,6 +47,7 @@ const App = () => {
     useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [logs]);
 
     const activeSeason = seasons?.find(x => x.id === activeId);
+    const episodeHosts = personas.filter(p => activeSeason?.host_ids?.includes(p.id));
 
     const scoutAudio = async (epIdx) => {
         if (!activeSeason || !activeSeason.episodes?.[epIdx]) return;
@@ -60,32 +61,18 @@ const App = () => {
 
     useEffect(() => { if (activeEp !== null) scoutAudio(activeEp); }, [activeEp, activeId]);
 
-    const createSeason = async () => {
-        if (!nS.topic || nS.host_ids.length < 2) return;
-        setLoad(true); try {
-            setStatus("Establishing Skeleton...");
-            const r1 = await fetch(`${BASE_URL}/season/init`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(nS) });
-            const s = await r1.json();
-            setStatus("Factual Research...");
-            await fetch(`${BASE_URL}/season/research`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
-            setStatus("Lore Generation...");
-            await fetch(`${BASE_URL}/season/lore`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
-            await sync();
-        } finally { setLoad(false); setStatus(""); }
-    };
-
     const runProduction = async (epIdx) => {
         setLoad(true); let allBlocks = [];
         try {
             for (let i = 1; i <= 6; i++) {
-                setStatus(`ACT ${i}: ENFORCING PROSODY...`);
+                setStatus(`ACT ${i}: ENFORCING EMOTIONAL PROSODY...`);
                 const response = await fetch(`${BASE_URL}/episode/act_script`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, act_num: i, previous_script: JSON.stringify(allBlocks.slice(-8)) }) });
                 const data = await response.json(); allBlocks = [...allBlocks, ...(data.script_blocks || [])];
             }
-            setStatus("Reviewing Forensic Gospel...");
-            const resAss = await fetch(`${BASE_URL}/episode/assess`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, sample: JSON.stringify(allBlocks.slice(0, 5)) }) });
-            const assData = await resAss.json();
-            const updatedEps = [...activeSeason.episodes]; updatedEps[epIdx].full_script_blocks = allBlocks; updatedEps[epIdx].assessment = assData.assessment;
+            setStatus("Forensic Assessment...");
+            const resAss = await fetch(`${BASE_URL}/episode/assess`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, sample: JSON.stringify(allBlocks.slice(0, 10)) }) });
+            const review = await resAss.json();
+            const updatedEps = [...activeSeason.episodes]; updatedEps[epIdx].full_script_blocks = allBlocks; updatedEps[epIdx].review = review;
             await fetch(`${BASE_URL}/episode/save_full`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), episodes: updatedEps }) });
             await sync();
         } finally { setLoad(false); setStatus(""); }
@@ -100,20 +87,20 @@ const App = () => {
     };
 
     const stitchAudio = async () => {
-        setStatus("STITCHING CINEMATIC MASTER..."); setLoad(true);
+        setStatus("ASSEMBLING MASTER..."); setLoad(true);
         try {
             const res = await fetch(`${BASE_URL}/episode/stitch_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: activeEp, manifest: audioManifest }) });
             const data = await res.json(); if (data.error) addLog(data.error, "error"); else { setMasterAudio(data.master_url); await sync(); }
         } finally { setLoad(false); setStatus(""); }
     };
 
-    const [nP, setNP] = useState({ name: '', role: 'Host', gender: CONFIG.G[0], description: "", trauma: '' });
-    const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 8, target_runtime: 15 });
-
     const vaultEpisodes = Array.isArray(seasons) ? seasons.reduce((acc, s) => {
         const mastered = (s.episodes || []).filter(e => e?.master_audio_url).map(e => ({ ...e, seasonTitle: s?.title, seasonId: s?.id }));
         return [...acc, ...mastered];
     }, []) : [];
+
+    const [nP, setNP] = useState({ name: '', role: 'Host', gender: CONFIG.G[0], description: "", trauma: '' });
+    const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 8, target_runtime: 15 });
 
     return (
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden text-[11px] select-none">
@@ -133,7 +120,7 @@ const App = () => {
 
                 {view === 'vault' ? (
                     <div className="grid grid-cols-1 gap-4 overflow-y-auto custom-scrollbar pr-4">
-                        <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-3xl mb-4"><h3 className="text-teal-500 font-black uppercase italic tracking-widest flex items-center gap-3"><Radio size={20}/> Produced Master Archive</h3></div>
+                        <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-3xl mb-4 text-teal-500 font-black uppercase italic tracking-widest flex items-center gap-3"><Radio size={20}/> Produced Master Archive</div>
                         {vaultEpisodes.map((e, i) => (
                             <div key={i} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] flex items-center gap-8 hover:border-teal-500 transition-all shadow-xl group">
                                 <div className="w-16 h-16 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500 group-hover:bg-teal-500 group-hover:text-black transition-all"><Headphones size={32}/></div>
@@ -153,7 +140,32 @@ const App = () => {
                                 </div>
                                 {masterAudio && <div className="bg-teal-950/20 px-6 py-2 rounded-xl border border-teal-500/30 flex items-center gap-4"><Headphones className="text-teal-500" size={16}/><audio controls className="h-6 accent-teal-500 w-64"><source src={`https://shadow-cassandrafiles.pythonanywhere.com${masterAudio}`} type="audio/mpeg"/></audio></div>}
                             </div>
-                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
+                            
+                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-6 pr-2">
+                                {activeSeason.episodes[activeEp]?.review && (
+                                    <div className="grid grid-cols-4 gap-4 mb-6">
+                                        {Object.entries(activeSeason.episodes[activeEp].review.scores).map(([k, v]) => (
+                                            <div key={k} className="bg-slate-900/50 p-4 border border-slate-800 rounded-2xl text-center">
+                                                <div className="text-[9px] text-teal-600 font-black uppercase mb-1">{k}</div>
+                                                <div className="text-2xl font-black text-white italic">{v}/10</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                
+                                {activeSeason.episodes[activeEp]?.review && (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4">
+                                            <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><CheckCircle size={12}/> Strengths</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.strengths}</p></div>
+                                            <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><AlertTriangle size={12}/> Lore Injection</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.past_lore_injections}</p></div>
+                                        </div>
+                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4">
+                                            <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><Activity size={12}/> Evolution</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.future_lore_progress}</p></div>
+                                            <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><Sparkles size={12}/> Adherence</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.lore_adherence}</p></div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {audioManifest ? (
                                     <div className="space-y-3">
                                         {audioManifest.map((a, i) => (
@@ -165,7 +177,7 @@ const App = () => {
                                         ))}
                                     </div>
                                 ) : activeSeason?.episodes[activeEp]?.full_script_blocks ? (
-                                    <textarea readOnly className="w-full h-full bg-slate-950/80 p-8 rounded-3xl border border-teal-900/20 text-teal-300 font-mono text-[9px] resize-none outline-none custom-scrollbar" value={JSON.stringify(activeSeason.episodes[activeEp].full_script_blocks, null, 4)} />
+                                    <textarea readOnly className="w-full h-[40vh] bg-slate-950/80 p-8 rounded-3xl border border-teal-900/20 text-teal-300 font-mono text-[9px] resize-none outline-none custom-scrollbar" value={JSON.stringify(activeSeason.episodes[activeEp].full_script_blocks, null, 4)} />
                                 ) : <div className="flex flex-col items-center justify-center h-full gap-8 opacity-40 hover:opacity-100 transition-opacity"><Mic2 size={80}/><button onClick={() => runProduction(activeEp)} className="px-12 py-5 bg-teal-500 text-black font-black uppercase text-[12px] rounded-2xl shadow-xl tracking-widest">Launch Master Engine</button></div>}
                             </div>
                         </div>
@@ -174,7 +186,10 @@ const App = () => {
                     <div className="grid grid-cols-2 gap-8 overflow-y-auto pr-4">{seasons.map(s => (
                         <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-10 border border-slate-800 rounded-[2rem] cursor-pointer hover:border-teal-500 transition-all shadow-2xl relative group h-fit">
                             <button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/season/${s.id}`, {method:'DELETE'}).then(sync); }} className="absolute top-6 right-6 text-red-900 opacity-0 group-hover:opacity-100 transition-all hover:text-red-500"><Trash2 size={20}/></button>
-                            <h4 className="text-white font-black uppercase italic text-2xl">{s.title}</h4>
+                            <h4 className="text-white font-black uppercase italic text-2xl mb-4">{s.title}</h4>
+                            <div className="flex gap-2">
+                                {personas.filter(p => s.host_ids?.includes(p.id)).map(p => <img key={p.id} src={p.portrait} className="w-8 h-8 rounded-lg border border-slate-700 bg-black" />)}
+                            </div>
                         </div>
                     ))}</div>
                 ) : (
@@ -182,6 +197,14 @@ const App = () => {
                         <div className="bg-slate-900/50 p-10 border border-slate-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden group h-fit">
                             <h3 className="text-teal-500 font-black uppercase italic tracking-widest mb-6 flex items-center gap-3"><BookOpen size={20}/> Factual Season Briefing</h3>
                             <p className="text-slate-200 text-lg leading-relaxed uppercase select-text italic relative z-10">{activeSeason?.description || "Researching factual data..."}</p>
+                            <div className="mt-8 flex gap-6 items-center border-t border-teal-900/30 pt-6">
+                                {episodeHosts.map(p => (
+                                    <div key={p.id} className="flex items-center gap-4">
+                                        <img src={p.portrait} className="w-12 h-12 rounded-xl bg-black border border-teal-500/30 shadow-lg" />
+                                        <div><div className="text-white font-black uppercase italic text-[12px]">{p.name}</div><div className="text-teal-600 font-black uppercase text-[9px]">{p.dna.mbti} Analyst</div></div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                         <div className="grid grid-cols-3 gap-6 overflow-y-auto pr-4 custom-scrollbar h-full">{(activeSeason?.episodes || []).map((e, idx) => (
                             <div key={idx} onClick={() => setActiveEp(idx)} className="p-8 border border-slate-800 bg-slate-900/30 rounded-[2rem] hover:border-teal-500 cursor-pointer text-center h-fit group transition-all shadow-lg">
