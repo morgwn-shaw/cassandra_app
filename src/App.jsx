@@ -16,7 +16,7 @@ const App = () => {
     const [status, setStatus] = useState("");
     const [audioManifest, setAudioManifest] = useState(null);
     const [masterAudio, setMasterAudio] = useState(null);
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V222_STREAM_READY", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V223_SHOWRUNNER_RESTORED", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => setLogs(p => [...p, { t: new Date().toLocaleTimeString(), m: typeof m === 'string' ? m : JSON.stringify(m), type }].slice(-50));
@@ -77,9 +77,7 @@ const App = () => {
                 setStatus(`SYNCING SNIPPET ${i + 1} / ${blocks.length}...`);
                 const res = await fetch(`${BASE_URL}/tts/single_turn`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: activeEp, b_idx: i, block: blocks[i] }) });
                 const snippet = await res.json();
-                if (!snippet.error) {
-                    manifest.push(snippet); setAudioManifest([...manifest]); // Real-time UI update
-                }
+                if (!snippet.error) { manifest.push(snippet); setAudioManifest([...manifest]); }
             }
         } finally { setLoad(false); setStatus(""); }
     };
@@ -134,7 +132,7 @@ const App = () => {
                             <div className="flex justify-between items-center mb-6 shrink-0">
                                 <div className="flex gap-4">
                                     <button onClick={() => { setActiveEp(null); setAudioManifest(null); setMasterAudio(null); }} className="text-slate-500 hover:text-white uppercase font-black italic text-[10px]">[ Close ]</button>
-                                    {!audioManifest && activeSeason?.episodes[activeEp]?.full_script_blocks && <button onClick={runStreamingAudio} className="px-6 py-2 bg-teal-500 text-black font-black uppercase rounded-lg text-[9px] flex items-center gap-2 shadow-xl"><Volume2 size={12}/> Synthesize Streaming</button>}
+                                    {!audioManifest && activeSeason?.episodes[activeEp]?.full_script_blocks && <button onClick={runStreamingAudio} className="px-6 py-2 bg-teal-500 text-black font-black uppercase rounded-lg text-[9px] flex items-center gap-2 shadow-xl"><Volume2 size={12}/> Synthesize Stream</button>}
                                     {audioManifest && !masterAudio && <button onClick={stitchAudio} className="px-6 py-2 bg-teal-500 text-black font-black uppercase rounded-lg text-[9px] flex items-center gap-2 animate-pulse"><Wand2 size={12}/> Assemble Master</button>}
                                 </div>
                                 {masterAudio && <div className="bg-teal-950/20 px-6 py-2 rounded-xl border border-teal-500/30 flex items-center gap-4"><Headphones className="text-teal-500" size={16}/><audio controls className="h-6 accent-teal-500 w-64"><source src={`https://shadow-cassandrafiles.pythonanywhere.com${masterAudio}`} type="audio/mpeg"/></audio></div>}
@@ -154,13 +152,13 @@ const App = () => {
                                 
                                 {activeSeason.episodes[activeEp]?.review && (
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-inner">
+                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4">
                                             <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><CheckCircle size={12}/> Strengths</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.strengths}</p></div>
-                                            <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><AlertTriangle size={12}/> Persona Lore Injection</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.past_lore_injections}</p></div>
+                                            <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><AlertTriangle size={12}/> Lore Injection</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.past_lore_injections}</p></div>
                                         </div>
-                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-inner">
-                                            <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><Activity size={12}/> Host Evolution</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.future_lore_progress}</p></div>
-                                            <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><Sparkles size={12}/> Backlog Adherence</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.lore_adherence}</p></div>
+                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4">
+                                            <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><Activity size={12}/> Evolution</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.future_lore_progress}</p></div>
+                                            <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><Sparkles size={12}/> Adherence</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.lore_adherence}</p></div>
                                         </div>
                                     </div>
                                 )}
@@ -239,6 +237,17 @@ const App = () => {
                 <div className="space-y-6 border-t border-slate-800 pt-10"><h3 className="text-teal-500 font-black uppercase border-b border-teal-900/30 pb-3 italic flex items-center gap-2"><Archive size={18}/> Season Architect</h3>
                 <input className="w-full bg-slate-900/50 p-5 border border-slate-800 text-white font-bold rounded-2xl uppercase text-[12px]" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
                 <select className="w-full bg-slate-900/50 p-4 border border-slate-800 text-teal-400 rounded-2xl outline-none font-black text-[10px]" value={nS.relationship} onChange={e => setNS({...nS, relationship: e.target.value})}>{CONFIG.D.map(d => <option key={d} value={d}>{d}</option>)}</select>
+                
+                <div className="space-y-2">
+                    <div className="flex justify-between text-[9px] uppercase font-black text-slate-500"><span>Episodes: {nS.episodes_count}</span></div>
+                    <input type="range" min="1" max="24" className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-teal-500" value={nS.episodes_count} onChange={e => setNS({...nS, episodes_count: parseInt(e.target.value)})} />
+                </div>
+
+                <div className="space-y-2">
+                    <div className="flex justify-between text-[9px] uppercase font-black text-slate-500"><span>Target Runtime: {nS.target_runtime}m</span></div>
+                    <input type="range" min="5" max="25" className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-teal-500" value={nS.target_runtime} onChange={e => setNS({...nS, target_runtime: parseInt(e.target.value)})} />
+                </div>
+
                 <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto">{personas?.map(p => (<button key={p.id} onClick={() => { const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(x => x !== p.id) : [...nS.host_ids, p.id]; setNS({...nS, host_ids: ids.slice(0, 2)}); }} className={`p-4 text-[9px] font-black border truncate rounded-2xl transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400 bg-teal-500/10 shadow-[0_0_15px_rgba(20,184,166,0.1)]' : 'border-slate-800 text-slate-600'}`}>{p.name}</button>))}</div>
                 <button onClick={async () => { setLoad(true); const res = await fetch(`${BASE_URL}/season/init`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(nS)}); const s = await res.json(); await fetch(`${BASE_URL}/season/research`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({season_id: s.id})}); await fetch(`${BASE_URL}/season/lore`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({season_id: s.id})}); await sync(); setLoad(false); }} disabled={nS.host_ids.length !== 2 || !nS.topic || load} className="w-full py-6 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl tracking-widest">Establish Season</button></div>
             </aside>
