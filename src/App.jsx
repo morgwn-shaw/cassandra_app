@@ -1,35 +1,25 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Trash2, UserPlus, Wifi, Cpu, X, Archive, BookOpen, History, ChevronRight, FileText, Activity, Zap, Terminal, Mic2, Headphones, Sparkles, UserCircle, MessageSquare, Copy, BarChart3, ClipboardCheck, Info, Volume2, Wand2, Radio, Star, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Trash2, UserPlus, Wifi, Cpu, X, Archive, BookOpen, History, ChevronRight, FileText, Activity, Zap, Terminal, Mic2, Headphones, Sparkles, UserCircle, MessageSquare, Copy, BarChart3, ClipboardCheck, Info, Volume2, Wand2, Radio, Star, AlertTriangle, CheckCircle, Scroll } from 'lucide-react';
 
 const BASE_URL = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2";
-const CONFIG = { 
-    G: ["Male", "Female", "Non-Binary", "Fluid"], 
-    D: ["Unresolved Sexual Tension", "Mentor / Mentee", "Enemies", "Frenemies", "Grudging Respect", "Buddy Cop", "Bitter Rivals", "Strategic Alliance"] 
-};
+const CONFIG = { G: ["Male", "Female", "Non-Binary", "Fluid"], D: ["Unresolved Sexual Tension", "Mentor / Mentee", "Enemies", "Frenemies", "Grudging Respect", "Buddy Cop", "Bitter Rivals", "Strategic Alliance"] };
 
 const App = () => {
     const [view, setView] = useState('library'); 
     const [activeId, setActiveId] = useState(null); 
     const [activeEp, setActiveEp] = useState(null);
     const [viewPersona, setViewPersona] = useState(null);
+    const [viewLore, setViewLore] = useState(false);
     const [seasons, setSeasons] = useState([]); 
     const [personas, setPersonas] = useState([]); 
     const [load, setLoad] = useState(false);
     const [status, setStatus] = useState("");
     const [audioManifest, setAudioManifest] = useState(null);
     const [masterAudio, setMasterAudio] = useState(null);
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V216_FULL_STACK_RESTORED", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V217_RESTORED_READY", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => setLogs(p => [...p, { t: new Date().toLocaleTimeString(), m: typeof m === 'string' ? m : JSON.stringify(m), type }].slice(-50));
-
-    const checkSystem = async () => {
-        try {
-            const res = await fetch(`${BASE_URL}/system/status`);
-            const data = await res.json();
-            addLog(`SYS: Python ${data.python.split(' ')[0]} | HOSTS: ${data.hosts} | SEASONS: ${data.seasons}`, "system");
-        } catch (e) { addLog("PROBE_FAIL", "error"); }
-    };
 
     const sync = useCallback(async () => {
         try {
@@ -43,7 +33,7 @@ const App = () => {
         } catch (e) { addLog("SYNC_FAIL", "error"); }
     }, []);
 
-    useEffect(() => { sync(); checkSystem(); }, [sync]);
+    useEffect(() => { sync(); }, [sync]);
     useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [logs]);
 
     const activeSeason = seasons?.find(x => x.id === activeId);
@@ -65,12 +55,12 @@ const App = () => {
         setLoad(true); let allBlocks = [];
         try {
             for (let i = 1; i <= 6; i++) {
-                setStatus(`ACT ${i}: ENFORCING EMOTIONAL PROSODY...`);
+                setStatus(`ACT ${i}: INJECTING BACKLOGS...`);
                 const response = await fetch(`${BASE_URL}/episode/act_script`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, act_num: i, previous_script: JSON.stringify(allBlocks.slice(-8)) }) });
                 const data = await response.json(); allBlocks = [...allBlocks, ...(data.script_blocks || [])];
             }
-            setStatus("Forensic Assessment...");
-            const resAss = await fetch(`${BASE_URL}/episode/assess`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, sample: JSON.stringify(allBlocks.slice(0, 10)) }) });
+            setStatus("Forensic Quality Assessment...");
+            const resAss = await fetch(`${BASE_URL}/episode/assess`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, sample: JSON.stringify(allBlocks.slice(0, 15)) }) });
             const review = await resAss.json();
             const updatedEps = [...activeSeason.episodes]; updatedEps[epIdx].full_script_blocks = allBlocks; updatedEps[epIdx].review = review;
             await fetch(`${BASE_URL}/episode/save_full`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), episodes: updatedEps }) });
@@ -94,13 +84,13 @@ const App = () => {
         } finally { setLoad(false); setStatus(""); }
     };
 
-    const vaultEpisodes = Array.isArray(seasons) ? seasons.reduce((acc, s) => {
-        const mastered = (s.episodes || []).filter(e => e?.master_audio_url).map(e => ({ ...e, seasonTitle: s?.title, seasonId: s?.id }));
-        return [...acc, ...mastered];
-    }, []) : [];
-
     const [nP, setNP] = useState({ name: '', role: 'Host', gender: CONFIG.G[0], description: "", trauma: '' });
     const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 8, target_runtime: 15 });
+
+    const vaultEpisodes = seasons.reduce((acc, s) => {
+        const mastered = (s.episodes || []).filter(e => e?.master_audio_url).map(e => ({ ...e, seasonTitle: s?.title, seasonId: s?.id }));
+        return [...acc, ...mastered];
+    }, []);
 
     return (
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden text-[11px] select-none">
@@ -113,14 +103,14 @@ const App = () => {
 
             <main className="flex-1 flex flex-col p-8 bg-[#0d0f11] relative overflow-hidden">
                 <div className="flex gap-4 mb-6 border-b border-slate-800 pb-6 shrink-0 items-center">
-                    <button onClick={() => { setView('library'); setActiveId(null); setActiveEp(null); setAudioManifest(null); setMasterAudio(null); }} className={`px-8 py-3 font-black uppercase rounded-lg transition-all ${view === 'library' && !activeId ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}>Library</button>
-                    <button onClick={() => { setView('vault'); setActiveId(null); setActiveEp(null); }} className={`px-8 py-3 font-black uppercase rounded-lg transition-all flex items-center gap-2 ${view === 'vault' ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}><Radio size={14}/> Vault</button>
-                    {activeId && <div className="flex-1 text-teal-500 font-black uppercase italic truncate text-lg px-4 truncate"><ChevronRight className="inline mr-2"/>{activeSeason?.title}</div>}
+                    <button onClick={() => { setView('library'); setActiveId(null); setActiveEp(null); setAudioManifest(null); setMasterAudio(null); setViewLore(false); }} className={`px-8 py-3 font-black uppercase rounded-lg transition-all ${view === 'library' && !activeId ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}>Library</button>
+                    <button onClick={() => { setView('vault'); setActiveId(null); setActiveEp(null); setViewLore(false); }} className={`px-8 py-3 font-black uppercase rounded-lg transition-all flex items-center gap-2 ${view === 'vault' ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}><Radio size={14}/> Vault</button>
+                    {activeId && <div className="flex-1 text-teal-500 font-black uppercase italic truncate text-lg px-4"><ChevronRight className="inline mr-2"/>{activeSeason?.title}</div>}
+                    {activeId && !activeEp && <button onClick={() => setViewLore(true)} className="px-6 py-3 bg-teal-950/20 border border-teal-500/30 text-teal-500 font-black uppercase rounded-lg flex items-center gap-2 hover:bg-teal-500 hover:text-black transition-all"><Scroll size={14}/> View Lore</button>}
                 </div>
 
                 {view === 'vault' ? (
                     <div className="grid grid-cols-1 gap-4 overflow-y-auto custom-scrollbar pr-4">
-                        <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-3xl mb-4 text-teal-500 font-black uppercase italic tracking-widest flex items-center gap-3"><Radio size={20}/> Produced Master Archive</div>
                         {vaultEpisodes.map((e, i) => (
                             <div key={i} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] flex items-center gap-8 hover:border-teal-500 transition-all shadow-xl group">
                                 <div className="w-16 h-16 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500 group-hover:bg-teal-500 group-hover:text-black transition-all"><Headphones size={32}/></div>
@@ -192,6 +182,20 @@ const App = () => {
                             </div>
                         </div>
                     ))}</div>
+                ) : viewLore ? (
+                    <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+                        <button onClick={() => setViewLore(false)} className="text-teal-500 font-black uppercase italic mb-4 flex items-center gap-2 hover:text-white transition-all shrink-0"><ChevronRight className="rotate-180"/> Back to Episodes</button>
+                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8 pr-4">
+                            <div className="bg-slate-900/40 p-10 border border-slate-800 rounded-[3rem] shadow-xl">
+                                <h3 className="text-teal-500 font-black uppercase italic text-lg mb-6 flex items-center gap-3"><History size={20}/> Shared Historical Lore</h3>
+                                <div className="grid grid-cols-2 gap-4">{activeSeason?.shared_history?.map((h, i) => <div key={i} className="p-4 bg-black/40 rounded-2xl border border-teal-900/10 italic text-slate-300">[{i+1}] {h}</div>)}</div>
+                            </div>
+                            <div className="bg-slate-900/40 p-10 border border-slate-800 rounded-[3rem] shadow-xl">
+                                <h3 className="text-teal-500 font-black uppercase italic text-lg mb-6 flex items-center gap-3"><Sparkles size={20}/> Future Evolution Arc</h3>
+                                <p className="text-slate-200 text-lg leading-relaxed italic">{activeSeason?.future_lore}</p>
+                            </div>
+                        </div>
+                    </div>
                 ) : (
                     <div className="flex flex-col h-full gap-8 overflow-hidden">
                         <div className="bg-slate-900/50 p-10 border border-slate-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden group h-fit">
@@ -199,7 +203,7 @@ const App = () => {
                             <p className="text-slate-200 text-lg leading-relaxed uppercase select-text italic relative z-10">{activeSeason?.description || "Researching factual data..."}</p>
                             <div className="mt-8 flex gap-6 items-center border-t border-teal-900/30 pt-6">
                                 {episodeHosts.map(p => (
-                                    <div key={p.id} className="flex items-center gap-4">
+                                    <div key={p.id} className="flex items-center gap-4 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => setViewPersona(p)}>
                                         <img src={p.portrait} className="w-12 h-12 rounded-xl bg-black border border-teal-500/30 shadow-lg" />
                                         <div><div className="text-white font-black uppercase italic text-[12px]">{p.name}</div><div className="text-teal-600 font-black uppercase text-[9px]">{p.dna.mbti} Analyst</div></div>
                                     </div>
