@@ -2,7 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Trash2, UserPlus, Wifi, Cpu, X, Archive, BookOpen, History, ChevronRight, FileText, Activity, Zap, Terminal, Mic2, Headphones, Sparkles, UserCircle, MessageSquare, Copy, BarChart3, ClipboardCheck, Info, Volume2, Wand2, Radio } from 'lucide-react';
 
 const BASE_URL = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2";
-const CONFIG = { G: ["Male", "Female", "Non-Binary", "Fluid"], D: ["Unresolved Sexual Tension", "Mentor / Mentee", "Enemies", "Frenemies", "Grudging Respect", "Buddy Cop", "Bitter Rivals", "Strategic Alliance"] };
+const CONFIG = { 
+    G: ["Male", "Female", "Non-Binary", "Fluid"], 
+    D: ["Unresolved Sexual Tension", "Mentor / Mentee", "Enemies", "Frenemies", "Grudging Respect", "Buddy Cop", "Bitter Rivals", "Strategic Alliance"] 
+};
 
 const App = () => {
     const [view, setView] = useState('library'); 
@@ -15,7 +18,7 @@ const App = () => {
     const [status, setStatus] = useState("");
     const [audioManifest, setAudioManifest] = useState(null);
     const [masterAudio, setMasterAudio] = useState(null);
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V208_PROBE_ACTIVE", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V209_SONIC_READY", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => setLogs(p => [...p, { t: new Date().toLocaleTimeString(), m: typeof m === 'string' ? m : JSON.stringify(m), type }].slice(-50));
@@ -25,7 +28,7 @@ const App = () => {
             const res = await fetch(`${BASE_URL}/system/status`);
             const data = await res.json();
             addLog(`SYS: ${data.python.split(' ')[0]}`, "system");
-            addLog(`STITCHER: ${data.pydub ? 'READY' : 'MISSING_PYDUB'}`, data.pydub ? "system" : "error");
+            addLog(`STITCHER: ${data.pydub ? 'READY' : 'FAIL_MISSING_PYDUB'}`, data.pydub ? "system" : "error");
         } catch (e) { addLog("PROBE_FAIL", "error"); }
     };
 
@@ -44,14 +47,29 @@ const App = () => {
 
     const scoutAudio = async (epIdx) => {
         if (!activeSeason || !activeSeason.episodes?.[epIdx]) return;
+        const ep = activeSeason.episodes[epIdx];
         try {
-            const res = await fetch(`${BASE_URL}/episode/check_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: epIdx, blocks_count: activeSeason.episodes[epIdx].full_script_blocks?.length || 0 }) });
+            const res = await fetch(`${BASE_URL}/episode/check_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: epIdx, blocks_count: ep.full_script_blocks?.length || 0 }) });
             const data = await res.json();
             setAudioManifest(data.audio_manifest); setMasterAudio(data.master_url);
         } catch (e) { addLog("SCOUT_FAIL", "error"); }
     };
 
     useEffect(() => { if (activeEp !== null) scoutAudio(activeEp); }, [activeEp, activeId]);
+
+    const createSeason = async () => {
+        if (!nS.topic || nS.host_ids.length < 2) return;
+        setLoad(true); try {
+            setStatus("Establishing Skeleton...");
+            const r1 = await fetch(`${BASE_URL}/season/init`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(nS) });
+            const s = await r1.json();
+            setStatus("Factual Research...");
+            await fetch(`${BASE_URL}/season/research`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
+            setStatus("Lore Generation...");
+            await fetch(`${BASE_URL}/season/lore`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
+            await sync();
+        } finally { setLoad(false); setStatus(""); }
+    };
 
     const runProduction = async (epIdx) => {
         setLoad(true); let allBlocks = [];
@@ -68,10 +86,10 @@ const App = () => {
     };
 
     const generateAudio = async () => {
-        setStatus("GENERATING CLIPS..."); setLoad(true);
+        setStatus("DISPATCHING TO CARTESIA..."); setLoad(true);
         try {
             const res = await fetch(`${BASE_URL}/episode/generate_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: activeEp, blocks: activeSeason.episodes[activeEp].full_script_blocks }) });
-            const data = await res.json(); setAudioManifest(data.audio_manifest);
+            const data = await res.json(); if (data.error) addLog(data.error, "error"); else setAudioManifest(data.audio_manifest);
         } finally { setLoad(false); setStatus(""); }
     };
 
@@ -108,11 +126,11 @@ const App = () => {
                 </div>
 
                 {view === 'vault' ? (
-                    <div className="grid grid-cols-1 gap-4 overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-1 gap-4 overflow-y-auto custom-scrollbar pr-4">
                         {vaultEpisodes.map((e, i) => (
                             <div key={i} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] flex items-center gap-8 hover:border-teal-500 transition-all shadow-xl group">
                                 <div className="w-16 h-16 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500 group-hover:bg-teal-500 group-hover:text-black transition-all"><Headphones size={32}/></div>
-                                <div className="flex-1"><div className="text-[9px] text-teal-600 font-black uppercase mb-1">{e.seasonTitle}</div><h4 className="text-white font-black uppercase text-xl italic">{e.title}</h4><div className="text-[9px] text-slate-500 uppercase mt-1">Mastered: {e.produced_at}</div></div>
+                                <div className="flex-1"><div className="text-[9px] text-teal-600 font-black uppercase mb-1">{e.seasonTitle}</div><h4 className="text-white font-black uppercase text-xl italic">{e.title}</h4></div>
                                 <audio controls className="h-10 accent-teal-500 w-80"><source src={`https://shadow-cassandrafiles.pythonanywhere.com${e.master_audio_url}`} type="audio/mpeg"/></audio>
                             </div>
                         ))}
@@ -123,7 +141,7 @@ const App = () => {
                             <div className="flex justify-between items-center mb-6 shrink-0">
                                 <div className="flex gap-4">
                                     <button onClick={() => { setActiveEp(null); setAudioManifest(null); setMasterAudio(null); }} className="text-slate-500 hover:text-white uppercase font-black italic text-[10px]">[ Close ]</button>
-                                    {!audioManifest && activeSeason?.episodes[activeEp]?.full_script_blocks && <button onClick={generateAudio} className="px-6 py-2 bg-teal-500 text-black font-black uppercase rounded-lg text-[9px] flex items-center gap-2 shadow-xl"><Volume2 size={12}/> Synthesize Aura</button>}
+                                    {!audioManifest && activeSeason?.episodes[activeEp]?.full_script_blocks && <button onClick={generateAudio} className="px-6 py-2 bg-teal-500 text-black font-black uppercase rounded-lg text-[9px] flex items-center gap-2 shadow-xl"><Volume2 size={12}/> Synthesize Sonic</button>}
                                     {audioManifest && !masterAudio && <button onClick={stitchAudio} className="px-6 py-2 bg-teal-500 text-black font-black uppercase rounded-lg text-[9px] flex items-center gap-2 animate-pulse"><Wand2 size={12}/> Assemble Master</button>}
                                 </div>
                                 {masterAudio && <div className="bg-teal-950/20 px-6 py-2 rounded-xl border border-teal-500/30 flex items-center gap-4"><Headphones className="text-teal-500" size={16}/><audio controls className="h-6 accent-teal-500 w-64"><source src={`https://shadow-cassandrafiles.pythonanywhere.com${masterAudio}`} type="audio/mpeg"/></audio></div>}
@@ -133,19 +151,21 @@ const App = () => {
                                     <div key={i} className="p-4 bg-slate-900/50 border border-slate-800 rounded-2xl flex items-center gap-6 group transition-all hover:border-teal-500 shadow-lg">
                                         <div className="w-8 h-8 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500 font-black">{i+1}</div>
                                         <div className="flex-1 text-teal-600 font-black uppercase truncate">{a.name}</div>
-                                        <audio controls className="h-8 accent-teal-500 w-64"><source src={`https://shadow-cassandrafiles.pythonanywhere.com${a.url}`} type="audio/mpeg"/></audio>
+                                        <audio controls className="h-8 accent-teal-500 w-full max-w-sm"><source src={`https://shadow-cassandrafiles.pythonanywhere.com${a.url}`} type="audio/mpeg"/></audio>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
                 ) : !activeId ? (
-                    <div className="grid grid-cols-2 gap-8 overflow-y-auto pr-4">{seasons.map(s => (
-                        <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-10 border border-slate-800 rounded-[2rem] cursor-pointer hover:border-teal-500 transition-all shadow-2xl relative group">
-                            <button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/season/${s.id}`, {method:'DELETE'}).then(sync); }} className="absolute top-6 right-6 text-red-900 opacity-0 group-hover:opacity-100 transition-all hover:text-red-500"><Trash2 size={20}/></button>
-                            <h4 className="text-white font-black uppercase italic text-2xl">{s.title}</h4>
-                        </div>
-                    ))}</div>
+                    <div className="grid grid-cols-2 gap-8 overflow-y-auto pr-4">
+                        {seasons.map(s => (
+                            <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-10 border border-slate-800 rounded-[2rem] cursor-pointer hover:border-teal-500 transition-all shadow-2xl relative group">
+                                <button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/season/${s.id}`, {method:'DELETE'}).then(sync); }} className="absolute top-6 right-6 text-red-900 opacity-0 group-hover:opacity-100 transition-all hover:text-red-500"><Trash2 size={20}/></button>
+                                <h4 className="text-white font-black uppercase italic text-2xl">{s.title}</h4>
+                            </div>
+                        ))}
+                    </div>
                 ) : (
                     <div className="flex flex-col h-full gap-8 overflow-hidden">
                         <div className="bg-slate-900/50 p-10 border border-slate-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden group"><div className="absolute top-0 right-0 p-8 text-teal-900 group-hover:text-teal-500 transition-colors"><Info size={40}/></div><h3 className="text-teal-500 font-black uppercase italic tracking-widest mb-6 flex items-center gap-3"><BookOpen size={20}/> Factual Season Briefing</h3><p className="text-slate-200 text-lg leading-relaxed uppercase select-text italic relative z-10">{activeSeason?.description || "Researching factual data..."}</p></div>
