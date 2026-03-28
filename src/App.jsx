@@ -2,31 +2,26 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Trash2, UserPlus, Wifi, Cpu, X, Archive, BookOpen, History, ChevronRight, FileText, Activity, Zap, Terminal, Mic2, Headphones, Sparkles, UserCircle, MessageSquare, Copy, BarChart3, ClipboardCheck, Info, Volume2, Wand2, Radio } from 'lucide-react';
 
 const BASE_URL = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2";
-const CONFIG = { G: ["Male", "Female", "Non-Binary", "Fluid"], D: ["Unresolved Sexual Tension", "Mentor / Mentee", "Enemies", "Frenemies", "Grudging Respect", "Buddy Cop", "Bitter Rivals", "Strategic Alliance"] };
+const CONFIG = { 
+    G: ["Male", "Female", "Non-Binary", "Fluid"], 
+    D: ["Unresolved Sexual Tension", "Mentor / Mentee", "Enemies", "Frenemies", "Grudging Respect", "Buddy Cop", "Bitter Rivals", "Strategic Alliance"] 
+};
 
 const App = () => {
     const [view, setView] = useState('library'); 
     const [activeId, setActiveId] = useState(null); 
     const [activeEp, setActiveEp] = useState(null);
     const [viewPersona, setViewPersona] = useState(null);
-    const [seasons, setSeasons] = useState([]); 
-    const [personas, setPersonas] = useState([]); 
+    const [seasons, setSeasons] = useState([]); // Array default
+    const [personas, setPersonas] = useState([]); // Array default
     const [load, setLoad] = useState(false);
     const [status, setStatus] = useState("");
     const [audioManifest, setAudioManifest] = useState(null);
     const [masterAudio, setMasterAudio] = useState(null);
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V213_BURST_ENGINE_ACTIVE", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V213_STABLE_BOOT", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => setLogs(p => [...p, { t: new Date().toLocaleTimeString(), m: typeof m === 'string' ? m : JSON.stringify(m), type }].slice(-50));
-
-    const checkSystem = async () => {
-        try {
-            const res = await fetch(`${BASE_URL}/system/status`);
-            const data = await res.json();
-            addLog(`SYS: ${data.python.split(' ')[0]} | DISPATCH: ${data.dispatcher} | BURST: ${data.burst_size}`, "system");
-        } catch (e) { addLog("PROBE_FAIL", "error"); }
-    };
 
     const sync = useCallback(async () => {
         try {
@@ -40,9 +35,10 @@ const App = () => {
         } catch (e) { addLog("SYNC_FAIL", "error"); }
     }, []);
 
-    useEffect(() => { sync(); checkSystem(); }, [sync]);
+    useEffect(() => { sync(); }, [sync]);
     useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [logs]);
 
+    // Safety Chaining to prevent crash
     const activeSeason = seasons?.find(x => x.id === activeId);
 
     const scoutAudio = async (epIdx) => {
@@ -61,7 +57,7 @@ const App = () => {
         setLoad(true); let allBlocks = [];
         try {
             for (let i = 1; i <= 6; i++) {
-                setStatus(`ACT ${i}: ENFORCING EMOTIONAL PROSODY...`);
+                setStatus(`PRODUCING ACT ${i} / 6...`);
                 const response = await fetch(`${BASE_URL}/episode/act_script`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, act_num: i, previous_script: JSON.stringify(allBlocks.slice(-8)) }) });
                 const data = await response.json(); allBlocks = [...allBlocks, ...(data.script_blocks || [])];
             }
@@ -80,20 +76,21 @@ const App = () => {
     };
 
     const stitchAudio = async () => {
-        setStatus("STITCHING CINEMATIC MASTER..."); setLoad(true);
+        setStatus("STITCHING MASTER..."); setLoad(true);
         try {
             const res = await fetch(`${BASE_URL}/episode/stitch_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: activeEp, manifest: audioManifest }) });
             const data = await res.json(); if (data.error) addLog(data.error, "error"); else { setMasterAudio(data.master_url); await sync(); }
         } finally { setLoad(false); setStatus(""); }
     };
 
-    const [nP, setNP] = useState({ name: '', role: 'Host', gender: CONFIG.G[0], description: "Investigative analyst.", trauma: '' });
+    const [nP, setNP] = useState({ name: '', role: 'Host', gender: CONFIG.G[0], description: "", trauma: '' });
     const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 8, target_runtime: 15 });
 
-    const vaultEpisodes = seasons.reduce((acc, s) => {
-        const mastered = (s.episodes || []).filter(e => e.master_audio_url).map(e => ({ ...e, seasonTitle: s.title, seasonId: s.id }));
+    // Robust Vault Calculation
+    const vaultEpisodes = Array.isArray(seasons) ? seasons.reduce((acc, s) => {
+        const mastered = (s.episodes || []).filter(e => e?.master_audio_url).map(e => ({ ...e, seasonTitle: s?.title, seasonId: s?.id }));
         return [...acc, ...mastered];
-    }, []);
+    }, []) : [];
 
     return (
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden text-[11px] select-none">
@@ -113,7 +110,7 @@ const App = () => {
 
                 {view === 'vault' ? (
                     <div className="grid grid-cols-1 gap-4 overflow-y-auto custom-scrollbar pr-4">
-                        <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-3xl mb-4"><h3 className="text-teal-500 font-black uppercase italic tracking-widest flex items-center gap-3"><Radio size={20}/> Produced Master Archive</h3></div>
+                        <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-3xl mb-4"><h3 className="text-teal-500 font-black uppercase italic tracking-widest flex items-center gap-3"><Radio size={20}/> Broadcast Archive</h3></div>
                         {vaultEpisodes.map((e, i) => (
                             <div key={i} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] flex items-center gap-8 hover:border-teal-500 transition-all shadow-xl group">
                                 <div className="w-16 h-16 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500 group-hover:bg-teal-500 group-hover:text-black transition-all"><Headphones size={32}/></div>
@@ -159,13 +156,14 @@ const App = () => {
                     ))}</div>
                 ) : (
                     <div className="flex flex-col h-full gap-8 overflow-hidden">
-                        <div className="bg-slate-900/50 p-10 border border-slate-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden group"><div className="absolute top-0 right-0 p-8 text-teal-900 group-hover:text-teal-500 transition-colors"><Info size={40}/></div><h3 className="text-teal-500 font-black uppercase italic tracking-widest mb-6 flex items-center gap-3"><BookOpen size={20}/> Factual Season Briefing</h3><p className="text-slate-200 text-lg leading-relaxed uppercase select-text italic relative z-10">{activeSeason?.description || "Researching factual data..."}</p></div>
-                        <div className="grid grid-cols-3 gap-6 overflow-y-auto pr-4 custom-scrollbar">{(activeSeason?.episodes || []).map((e, idx) => (
-                            <div key={idx} className="relative group">
-                                <div onClick={() => setActiveEp(idx)} className="p-8 border border-slate-800 bg-slate-900/30 rounded-[2rem] hover:border-teal-500 cursor-pointer text-center h-fit group transition-all shadow-lg">
-                                    <h5 className="text-white font-black uppercase italic text-lg mb-4 truncate">{e?.title || "Researching..."}</h5>
-                                    {e.master_audio_url && <div className="mt-4 text-teal-500 text-[10px] font-black uppercase italic flex items-center justify-center gap-2"><Headphones size={12}/> mastered</div>}
-                                </div>
+                        <div className="bg-slate-900/50 p-10 border border-slate-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden group h-fit">
+                            <h3 className="text-teal-500 font-black uppercase italic tracking-widest mb-6 flex items-center gap-3"><BookOpen size={20}/> Factual Season Briefing</h3>
+                            <p className="text-slate-200 text-lg leading-relaxed uppercase select-text italic relative z-10">{activeSeason?.description || "Researching factual data..."}</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-6 overflow-y-auto pr-4 custom-scrollbar h-full">{(activeSeason?.episodes || []).map((e, idx) => (
+                            <div key={idx} onClick={() => setActiveEp(idx)} className="p-8 border border-slate-800 bg-slate-900/30 rounded-[2rem] hover:border-teal-500 cursor-pointer text-center h-fit group transition-all shadow-lg">
+                                <h5 className="text-white font-black uppercase italic text-lg mb-4 truncate">{e?.title || "Researching..."}</h5>
+                                {e.master_audio_url && <div className="mt-4 text-teal-500 text-[10px] font-black uppercase italic flex items-center justify-center gap-2"><Headphones size={12}/> mastered</div>}
                             </div>
                         ))}</div>
                     </div>
@@ -183,7 +181,7 @@ const App = () => {
                 <input className="w-full bg-slate-900/50 p-5 border border-slate-800 text-white font-bold rounded-2xl uppercase text-[12px]" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
                 <select className="w-full bg-slate-900/50 p-4 border border-slate-800 text-teal-400 rounded-2xl outline-none font-black text-[10px]" value={nS.relationship} onChange={e => setNS({...nS, relationship: e.target.value})}>{CONFIG.D.map(d => <option key={d} value={d}>{d}</option>)}</select>
                 <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto">{personas?.map(p => (<button key={p.id} onClick={() => { const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(x => x !== p.id) : [...nS.host_ids, p.id]; setNS({...nS, host_ids: ids.slice(0, 2)}); }} className={`p-4 text-[9px] font-black border truncate rounded-2xl transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400 bg-teal-500/10 shadow-[0_0_15px_rgba(20,184,166,0.1)]' : 'border-slate-800 text-slate-600'}`}>{p.name}</button>))}</div>
-                <button onClick={createSeason} disabled={nS.host_ids.length !== 2 || !nS.topic || load} className="w-full py-6 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl tracking-widest">Establish Season</button></div>
+                <button onClick={async () => { setLoad(true); const res = await fetch(`${BASE_URL}/season/init`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(nS)}); const s = await res.json(); await fetch(`${BASE_URL}/season/research`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({season_id: s.id})}); await fetch(`${BASE_URL}/season/lore`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({season_id: s.id})}); await sync(); setLoad(false); }} disabled={nS.host_ids.length !== 2 || !nS.topic || load} className="w-full py-6 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl tracking-widest">Establish Season</button></div>
             </aside>
 
             {viewPersona && (
