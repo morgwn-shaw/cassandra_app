@@ -15,7 +15,7 @@ const App = () => {
     const [status, setStatus] = useState("");
     const [audioManifest, setAudioManifest] = useState(null);
     const [masterAudio, setMasterAudio] = useState(null);
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V207_MASTER_LOCKED", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V207_INTL_LOCKED", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => setLogs(p => [...p, { t: new Date().toLocaleTimeString(), m: typeof m === 'string' ? m : JSON.stringify(m), type }].slice(-50));
@@ -63,19 +63,29 @@ const App = () => {
     };
 
     const generateAudio = async () => {
-        setStatus("AURA DISPATCHER ACTIVE..."); setLoad(true);
+        setStatus("AURA DISPATCHER ACTIVE..."); setLoad(true); addLog("DISPATCHING TO DEEPGRAM...", "system");
         try {
             const res = await fetch(`${BASE_URL}/episode/generate_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: activeEp, blocks: activeSeason.episodes[activeEp].full_script_blocks }) });
-            const data = await res.json(); setAudioManifest(data.audio_manifest);
+            const data = await res.json(); 
+            if (data.error) addLog(data.error, "error"); else { setAudioManifest(data.audio_manifest); addLog("AUDIO_READY", "system"); }
         } finally { setLoad(false); setStatus(""); }
     };
 
     const stitchAudio = async () => {
-        setStatus("ASSEMBLING MASTER..."); setLoad(true);
+        setStatus("ASSEMBLING MASTER..."); setLoad(true); addLog("ASSEMBLING MASTER...", "system");
         try {
             const res = await fetch(`${BASE_URL}/episode/stitch_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: activeEp, manifest: audioManifest }) });
-            const data = await res.json(); if (data.error) addLog(data.error, "error"); else { setMasterAudio(data.master_url); await sync(); }
+            const data = await res.json(); 
+            if (data.error) addLog(data.error, "error");
+            else { setMasterAudio(data.master_url); addLog("STITCH_SUCCESS", "system"); await sync(); }
         } finally { setLoad(false); setStatus(""); }
+    };
+
+    const deleteEpisode = async (idx) => {
+        if (!window.confirm("Permanent Pruning?")) return;
+        setLoad(true); setStatus("Deleting Episode...");
+        try { await fetch(`${BASE_URL}/season/${activeId}/episode/${idx}`, { method: 'DELETE' }); await sync(); setActiveEp(null); }
+        finally { setLoad(false); setStatus(""); }
     };
 
     const [nP, setNP] = useState({ name: '', role: 'Host', gender: CONFIG.G[0], description: "Investigative analyst.", trauma: '' });
@@ -92,12 +102,12 @@ const App = () => {
             
             <aside className="w-[260px] border-r border-slate-800 bg-black/80 flex flex-col shrink-0 p-4">
                 <div className="text-teal-500 font-black uppercase text-[10px] italic flex items-center gap-2 mb-4"><Terminal size={14}/> Telemetry</div>
-                <div ref={logRef} className="flex-1 overflow-y-auto space-y-2 opacity-60 custom-scrollbar text-[9px] uppercase">{logs.map((l, i) => <div key={i}>[{l.t}] {l.m}</div>)}</div>
+                <div ref={logRef} className="flex-1 overflow-y-auto space-y-2 opacity-60 custom-scrollbar text-[9px] uppercase">{logs.map((l, i) => <div key={i} className={l.type === 'error' ? 'text-red-500' : ''}>[{l.t}] {l.m}</div>)}</div>
             </aside>
 
             <main className="flex-1 flex flex-col p-8 bg-[#0d0f11] relative overflow-hidden">
                 <div className="flex gap-4 mb-6 border-b border-slate-800 pb-6 shrink-0 items-center">
-                    <button onClick={() => { setView('library'); setActiveId(null); setActiveEp(null); }} className={`px-8 py-3 font-black uppercase rounded-lg transition-all ${view === 'library' && !activeId ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}>Library</button>
+                    <button onClick={() => { setView('library'); setActiveId(null); setActiveEp(null); setAudioManifest(null); setMasterAudio(null); }} className={`px-8 py-3 font-black uppercase rounded-lg transition-all ${view === 'library' && !activeId ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}>Library</button>
                     <button onClick={() => { setView('vault'); setActiveId(null); setActiveEp(null); }} className={`px-8 py-3 font-black uppercase rounded-lg transition-all flex items-center gap-2 ${view === 'vault' ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}><Radio size={14}/> Vault</button>
                     {activeId && <div className="flex-1 text-teal-500 font-black uppercase italic truncate text-lg px-4 truncate"><ChevronRight className="inline mr-2"/>{activeSeason?.title}</div>}
                 </div>
@@ -126,7 +136,7 @@ const App = () => {
                                 {audioManifest ? (
                                     <div className="space-y-3">
                                         {audioManifest.map((a, i) => (
-                                            <div key={i} className="p-4 bg-slate-900/50 border border-slate-800 rounded-2xl flex items-center gap-6 hover:border-teal-500 transition-all group">
+                                            <div key={i} className="p-4 bg-slate-900/50 border border-slate-800 rounded-2xl flex items-center gap-6 group">
                                                 <div className="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500 font-black italic">{i+1}</div>
                                                 <div className="flex-1"><div className="text-[9px] text-teal-600 font-black uppercase mb-1">{a.name}</div><audio controls className="h-8 accent-teal-500 w-full max-w-sm"><source src={`https://shadow-cassandrafiles.pythonanywhere.com${a.url}`} type="audio/mpeg"/></audio></div>
                                             </div>
@@ -139,7 +149,7 @@ const App = () => {
                         </div>
                     </div>
                 ) : !activeId ? (
-                    <div className="grid grid-cols-2 gap-8 overflow-y-auto pr-4">{seasons.map(s => (
+                    <div className="grid grid-cols-2 gap-8 overflow-y-auto custom-scrollbar pr-4">{seasons.map(s => (
                         <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-10 border border-slate-800 rounded-[2rem] cursor-pointer hover:border-teal-500 transition-all relative group shadow-2xl">
                             <button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/season/${s.id}`, {method:'DELETE'}).then(sync); }} className="absolute top-6 right-6 text-red-900 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={20}/></button>
                             <h4 className="text-white font-black uppercase italic text-2xl">{s.title}</h4>
@@ -154,7 +164,7 @@ const App = () => {
                                     <h5 className="text-white font-black uppercase italic text-lg mb-4">{e?.title}</h5>
                                     {e.master_audio_url && <div className="mt-4 text-teal-500 text-[10px] font-black uppercase italic"><Headphones size={12} className="inline mr-2"/> mastered</div>}
                                 </div>
-                                <button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/season/${activeId}/episode/${idx}`, {method:'DELETE'}).then(sync); }} className="absolute top-4 right-4 text-red-900 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
+                                <button onClick={(e) => { e.stopPropagation(); deleteEpisode(idx); }} className="absolute top-4 right-4 text-red-900 opacity-0 group-hover:opacity-100 transition-all hover:text-red-500"><Trash2 size={16}/></button>
                             </div>
                         ))}</div>
                     </div>
@@ -166,18 +176,18 @@ const App = () => {
                 <input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-white font-bold rounded-xl uppercase text-[12px]" placeholder="NAME" value={nP.name} onChange={e => setNP({...nP, name: e.target.value})} /><textarea className="w-full bg-slate-900/50 p-4 border border-slate-800 text-slate-300 rounded-xl uppercase text-[10px] h-32" placeholder="DESCRIPTION" value={nP.description} onChange={e => setNP({...nP, description: e.target.value})} /><input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-teal-300 rounded-xl uppercase text-[10px]" placeholder="CORE TRAUMA" value={nP.trauma} onChange={e => setNP({...nP, trauma: e.target.value})} />
                 <div className="grid grid-cols-1 gap-4"><select className="bg-slate-900/50 p-4 border border-slate-800 text-teal-500 rounded-2xl outline-none uppercase font-black" value={nP.gender} onChange={e => setNP({...nP, gender: e.target.value})}>{CONFIG.G.map(g => <option key={g} value={g}>{g}</option>)}</select>
                 <button onClick={async () => { setLoad(true); await fetch(`${BASE_URL}/persona/create`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(nP)}); await sync(); setLoad(false); }} disabled={!nP.name || load} className="w-full py-5 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl">Commit Subject DNA</button></div>
-                <div className="flex flex-wrap gap-4 pt-6 border-t border-slate-900">{personas?.map(p => <div key={p.id} className="relative group"><img src={p.portrait} onClick={() => setViewPersona(p)} className="w-14 h-14 rounded-xl border-2 border-slate-800 hover:border-teal-500 cursor-pointer bg-black shadow-xl" alt="p" /><button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/persona/${p.id}`, {method:'DELETE'}).then(sync); }} className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={10}/></button></div>)}</div></div>
+                <div className="flex flex-wrap gap-4 pt-6 border-t border-slate-900">{personas?.map(p => <div key={p.id} className="relative group"><img src={p.portrait} onClick={() => setViewPersona(p)} className="w-14 h-14 rounded-xl border-2 border-slate-800 hover:border-teal-500 cursor-pointer bg-black shadow-xl" alt="p" /><button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/persona/${p.id}`, {method:'DELETE'}).then(sync); }} className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500"><Trash2 size={10}/></button></div>)}</div></div>
 
                 <div className="space-y-6 border-t border-slate-800 pt-10"><h3 className="text-teal-500 font-black uppercase border-b border-teal-900/30 pb-3 italic flex items-center gap-2"><Archive size={18}/> Season Architect</h3>
                 <input className="w-full bg-slate-900/50 p-5 border border-slate-800 text-white font-bold rounded-2xl uppercase text-[12px]" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
                 <select className="w-full bg-slate-900/50 p-4 border border-slate-800 text-teal-400 rounded-2xl outline-none font-black text-[10px]" value={nS.relationship} onChange={e => setNS({...nS, relationship: e.target.value})}>{CONFIG.D.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto">{personas?.map(p => (<button key={p.id} onClick={() => { const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(x => x !== p.id) : [...nS.host_ids, p.id]; setNS({...nS, host_ids: ids.slice(0, 2)}); }} className={`p-4 text-[9px] font-black border truncate rounded-2xl transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400 bg-teal-500/10' : 'border-slate-800 text-slate-600'}`}>{p.name}</button>))}</div>
+                <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto">{personas?.map(p => (<button key={p.id} onClick={() => { const ids = nS.host_ids.includes(p.id) ? nS.host_ids.filter(x => x !== p.id) : [...nS.host_ids, p.id]; setNS({...nS, host_ids: ids.slice(0, 2)}); }} className={`p-4 text-[9px] font-black border truncate rounded-2xl transition-all ${nS.host_ids.includes(p.id) ? 'border-teal-500 text-teal-400 bg-teal-500/10 shadow-[0_0_15px_rgba(20,184,166,0.1)]' : 'border-slate-800 text-slate-600'}`}>{p.name}</button>))}</div>
                 <button onClick={async () => { setLoad(true); await fetch(`${BASE_URL}/season/init`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(nS)}); await sync(); setLoad(false); }} disabled={nS.host_ids.length !== 2 || !nS.topic || load} className="w-full py-6 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl">Establish Season</button></div>
             </aside>
 
             {viewPersona && (
                 <div className="fixed inset-0 z-[600] bg-black/95 flex items-center justify-center p-12 backdrop-blur-3xl" onClick={() => setViewPersona(null)}>
-                    <div className="bg-[#0d0f11] w-full max-w-6xl h-[85vh] border border-teal-900/40 rounded-3xl p-10 flex gap-10 overflow-hidden relative shadow-2xl" onClick={e => e.stopPropagation()}>
+                    <div className="bg-[#0d0f11] w-full max-w-6xl h-[85vh] border border-teal-900/40 rounded-3xl p-10 flex gap-10 overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
                         <div className="w-[300px] shrink-0 space-y-6"><img src={viewPersona?.portrait} className="w-full aspect-square rounded-2xl border-2 border-teal-900/20 bg-black shadow-xl" alt="p" /><h2 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none">{viewPersona?.name}</h2><div className="p-4 bg-teal-950/20 border border-teal-900/30 rounded-xl font-black text-white text-[12px] uppercase">{viewPersona?.dna?.mbti || "INTJ"} Profile / {viewPersona?.voice_id}</div></div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-8 uppercase text-[10px]"><div className="p-8 bg-black/40 border border-slate-800 rounded-2xl leading-relaxed italic text-teal-500 font-bold">CORE TRAUMA: {viewPersona?.dna?.core_trauma}</div><div className="p-8 bg-black/40 border border-slate-800 rounded-2xl leading-relaxed italic">{viewPersona?.dna?.personality_blurb}</div></div>
                     </div>
