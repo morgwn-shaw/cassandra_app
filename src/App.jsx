@@ -29,6 +29,7 @@ const App = () => {
             const data = await res.json();
             addLog(`SYS: ${data.python.split(' ')[0]}`, "system");
             addLog(`STITCHER: ${data.pydub ? 'READY' : 'FAIL_MISSING_PYDUB'}`, data.pydub ? "system" : "error");
+            addLog(`AUDIO: CARTESIA SONIC`, "system");
         } catch (e) { addLog("PROBE_FAIL", "error"); }
     };
 
@@ -52,24 +53,10 @@ const App = () => {
             const res = await fetch(`${BASE_URL}/episode/check_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: epIdx, blocks_count: ep.full_script_blocks?.length || 0 }) });
             const data = await res.json();
             setAudioManifest(data.audio_manifest); setMasterAudio(data.master_url);
-        } catch (e) { addLog("SCOUT_FAIL", "error"); }
+        } catch (e) { console.error("Scout failed"); }
     };
 
     useEffect(() => { if (activeEp !== null) scoutAudio(activeEp); }, [activeEp, activeId]);
-
-    const createSeason = async () => {
-        if (!nS.topic || nS.host_ids.length < 2) return;
-        setLoad(true); try {
-            setStatus("Establishing Skeleton...");
-            const r1 = await fetch(`${BASE_URL}/season/init`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(nS) });
-            const s = await r1.json();
-            setStatus("Factual Research...");
-            await fetch(`${BASE_URL}/season/research`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
-            setStatus("Lore Generation...");
-            await fetch(`${BASE_URL}/season/lore`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
-            await sync();
-        } finally { setLoad(false); setStatus(""); }
-    };
 
     const runProduction = async (epIdx) => {
         setLoad(true); let allBlocks = [];
@@ -151,21 +138,19 @@ const App = () => {
                                     <div key={i} className="p-4 bg-slate-900/50 border border-slate-800 rounded-2xl flex items-center gap-6 group transition-all hover:border-teal-500 shadow-lg">
                                         <div className="w-8 h-8 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500 font-black">{i+1}</div>
                                         <div className="flex-1 text-teal-600 font-black uppercase truncate">{a.name}</div>
-                                        <audio controls className="h-8 accent-teal-500 w-full max-w-sm"><source src={`https://shadow-cassandrafiles.pythonanywhere.com${a.url}`} type="audio/mpeg"/></audio>
+                                        <audio controls className="h-8 accent-teal-500 w-64"><source src={`https://shadow-cassandrafiles.pythonanywhere.com${a.url}`} type="audio/mpeg"/></audio>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
                 ) : !activeId ? (
-                    <div className="grid grid-cols-2 gap-8 overflow-y-auto pr-4">
-                        {seasons.map(s => (
-                            <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-10 border border-slate-800 rounded-[2rem] cursor-pointer hover:border-teal-500 transition-all shadow-2xl relative group">
-                                <button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/season/${s.id}`, {method:'DELETE'}).then(sync); }} className="absolute top-6 right-6 text-red-900 opacity-0 group-hover:opacity-100 transition-all hover:text-red-500"><Trash2 size={20}/></button>
-                                <h4 className="text-white font-black uppercase italic text-2xl">{s.title}</h4>
-                            </div>
-                        ))}
-                    </div>
+                    <div className="grid grid-cols-2 gap-8 overflow-y-auto pr-4">{seasons.map(s => (
+                        <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-10 border border-slate-800 rounded-[2rem] cursor-pointer hover:border-teal-500 transition-all shadow-2xl relative group">
+                            <button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/season/${s.id}`, {method:'DELETE'}).then(sync); }} className="absolute top-6 right-6 text-red-900 opacity-0 group-hover:opacity-100 transition-all hover:text-red-500"><Trash2 size={20}/></button>
+                            <h4 className="text-white font-black uppercase italic text-2xl">{s.title}</h4>
+                        </div>
+                    ))}</div>
                 ) : (
                     <div className="flex flex-col h-full gap-8 overflow-hidden">
                         <div className="bg-slate-900/50 p-10 border border-slate-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden group"><div className="absolute top-0 right-0 p-8 text-teal-900 group-hover:text-teal-500 transition-colors"><Info size={40}/></div><h3 className="text-teal-500 font-black uppercase italic tracking-widest mb-6 flex items-center gap-3"><BookOpen size={20}/> Factual Season Briefing</h3><p className="text-slate-200 text-lg leading-relaxed uppercase select-text italic relative z-10">{activeSeason?.description || "Researching factual data..."}</p></div>
@@ -186,8 +171,8 @@ const App = () => {
                 <div className="space-y-6"><h3 className="text-teal-500 font-black uppercase border-b border-teal-900/30 pb-3 italic flex items-center gap-2"><UserPlus size={18}/> Identity Spawn</h3>
                 <input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-white font-bold rounded-xl uppercase text-[12px]" placeholder="NAME" value={nP.name} onChange={e => setNP({...nP, name: e.target.value})} /><textarea className="w-full bg-slate-900/50 p-4 border border-slate-800 text-slate-300 rounded-xl uppercase text-[10px] h-32" placeholder="DESCRIPTION" value={nP.description} onChange={e => setNP({...nP, description: e.target.value})} />
                 <div className="grid grid-cols-1 gap-4"><select className="bg-slate-900/50 p-4 border border-slate-800 text-teal-500 rounded-2xl outline-none uppercase font-black" value={nP.gender} onChange={e => setNP({...nP, gender: e.target.value})}>{CONFIG.G.map(g => <option key={g} value={g}>{g}</option>)}</select>
-                <button onClick={async () => { setLoad(true); await fetch(`${BASE_URL}/persona/create`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(nP)}); await sync(); setLoad(false); }} disabled={!nP.name || load} className="w-full py-5 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl">Commit Subject DNA</button></div>
-                <div className="flex flex-wrap gap-4 pt-6 border-t border-slate-900">{personas?.map(p => <div key={p.id} className="relative group"><img src={p.portrait} onClick={() => { sync(); }} className="w-14 h-14 rounded-xl border-2 border-slate-800 hover:border-teal-500 cursor-pointer bg-black shadow-xl" alt="p" /><button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/persona/${p.id}`, {method:'DELETE'}).then(sync); }} className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500"><Trash2 size={10}/></button></div>)}</div></div>
+                <button onClick={async () => { setLoad(true); await fetch(`${BASE_URL}/persona/create`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(nP)}); await sync(); setLoad(false); }} disabled={!nP.name || load} className="w-full py-5 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl">Commit DNA DNA</button></div>
+                <div className="flex flex-wrap gap-4 pt-6 border-t border-slate-900">{personas?.map(p => <div key={p.id} className="relative group"><img src={p.portrait} onClick={() => { setViewPersona(p); }} className="w-14 h-14 rounded-xl border-2 border-slate-800 hover:border-teal-500 cursor-pointer bg-black shadow-xl" alt="p" /><button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/persona/${p.id}`, {method:'DELETE'}).then(sync); }} className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500"><Trash2 size={10}/></button></div>)}</div></div>
 
                 <div className="space-y-6 border-t border-slate-800 pt-10"><h3 className="text-teal-500 font-black uppercase border-b border-teal-900/30 pb-3 italic flex items-center gap-2"><Archive size={18}/> Season Architect</h3>
                 <input className="w-full bg-slate-900/50 p-5 border border-slate-800 text-white font-bold rounded-2xl uppercase text-[12px]" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
