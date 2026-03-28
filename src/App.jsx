@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Trash2, UserPlus, Wifi, Cpu, X, Archive, BookOpen, History, ChevronRight, FileText, Activity, Zap, Terminal, Mic2, Headphones, Sparkles, UserCircle, MessageSquare, Copy, BarChart3, ClipboardCheck, Info } from 'lucide-react';
 
 const BASE_URL = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2";
-const DESC_SAMPLES = ["A jaded specialist with a love for data.", "A street-smart data broker.", "A tech futurist."];
 const CONFIG = {
     G: ["Male", "Female", "Non-Binary", "Fluid"],
     D: ["Unresolved Sexual Tension", "Mentor / Mentee", "Enemies", "Frenemies", "Grudging Respect", "Buddy Cop", "Bitter Rivals", "Strategic Alliance"],
@@ -17,7 +16,7 @@ const App = () => {
     const [personas, setPersonas] = useState([]);
     const [load, setLoad] = useState(false);
     const [status, setStatus] = useState("");
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V198_FACT_LOCKED", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V198_GOSPEL_LOCKED", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => {
@@ -38,7 +37,7 @@ const App = () => {
     useEffect(() => { sync(); }, [sync]);
     useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [logs]);
 
-    const [nP, setNP] = useState({ name: '', role: 'Host', gender: CONFIG.G[0], description: DESC_SAMPLES[0], trauma: '' });
+    const [nP, setNP] = useState({ name: '', role: 'Host', gender: CONFIG.G[0], description: "A forensic researcher.", trauma: '' });
     const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 8, target_runtime: 15 });
 
     const createPersona = async () => {
@@ -53,13 +52,11 @@ const App = () => {
         if (!nS.topic || nS.host_ids.length < 2) return addLog("MISSING_DATA", "error");
         setLoad(true);
         try {
-            setStatus("Establishing Skeleton..."); 
-            const r1 = await fetch(`${BASE_URL}/season/init`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(nS) });
+            setStatus("Init..."); const r1 = await fetch(`${BASE_URL}/season/init`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(nS) });
             const s = await r1.json();
-            setStatus("Researching Factual History..."); addLog(`INIT_FACTS: ${s.id}`, "system");
+            setStatus("Researching Truth..."); addLog(`VERIFYING: ${nS.topic}`, "system");
             await fetch(`${BASE_URL}/season/research`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
-            setStatus("Lore Sync..."); addLog("LORE_SYNC...", "system");
-            await fetch(`${BASE_URL}/season/lore`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
+            setStatus("Lore Handshake..."); await fetch(`${BASE_URL}/season/lore`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
             await sync();
         } catch (e) { addLog(`CRASH: ${e.message}`, "error"); }
         finally { setLoad(false); setStatus(""); }
@@ -150,7 +147,7 @@ const App = () => {
                                     <button onClick={() => setActiveEp(null)} className="text-slate-500 hover:text-white uppercase font-black italic tracking-widest text-[10px]">[ Close ]</button>
                                 </div>
                                 {activeSeason?.episodes?.[activeEp]?.full_script_blocks ? (
-                                    <textarea readOnly className="w-full h-[50vh] bg-slate-950/80 p-8 rounded-3xl border border-teal-900/20 text-teal-300 font-mono text-[9px] resize-none outline-none select-text custom-scrollbar" value={JSON.stringify(activeSeason.episodes[activeEp].full_script_blocks, null, 4)} />
+                                    <textarea readOnly className="flex-1 bg-slate-950/80 p-8 rounded-3xl border border-teal-900/20 text-teal-300 font-mono text-[9px] resize-none outline-none select-text custom-scrollbar" value={JSON.stringify(activeSeason.episodes[activeEp].full_script_blocks, null, 4)} />
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-full gap-8">
                                         <Mic2 size={80} className="text-teal-900 animate-pulse" />
