@@ -5,7 +5,7 @@ const BASE_URL = "https://shadow-cassandrafiles.pythonanywhere.com/api/v2";
 const CONFIG = { G: ["Male", "Female", "Non-Binary", "Fluid"], D: ["Unresolved Sexual Tension", "Mentor / Mentee", "Enemies", "Frenemies", "Grudging Respect", "Buddy Cop", "Bitter Rivals", "Strategic Alliance"] };
 
 const App = () => {
-    const [view, setView] = useState('library'); // library | vault
+    const [view, setView] = useState('library'); 
     const [activeId, setActiveId] = useState(null); 
     const [viewPersona, setViewPersona] = useState(null); 
     const [activeEp, setActiveEp] = useState(null);
@@ -30,9 +30,9 @@ const App = () => {
     }, []);
 
     useEffect(() => { sync(); }, [sync]);
-    useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [logs]);
 
     const scoutAudio = async (epIdx) => {
+        if (!activeSeason || !activeSeason.episodes[epIdx]) return;
         const ep = activeSeason.episodes[epIdx];
         if (!ep.full_script_blocks) return;
         try {
@@ -53,11 +53,9 @@ const App = () => {
                 const response = await fetch(`${BASE_URL}/episode/act_script`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, act_num: i, previous_script: JSON.stringify(allBlocks.slice(-8)) }) });
                 const data = await response.json(); allBlocks = [...allBlocks, ...(data.script_blocks || [])];
             }
-            setStatus("Finalizing Assessment...");
             const resAss = await fetch(`${BASE_URL}/episode/assess`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, sample: JSON.stringify(allBlocks.slice(0, 5)) }) });
             const assData = await resAss.json();
-            const curS = seasons.find(s => s.id === activeId); const updatedEps = [...curS.episodes];
-            updatedEps[epIdx].full_script_blocks = allBlocks; updatedEps[epIdx].assessment = assData.assessment;
+            const updatedEps = [...activeSeason.episodes]; updatedEps[epIdx].full_script_blocks = allBlocks; updatedEps[epIdx].assessment = assData.assessment;
             await fetch(`${BASE_URL}/episode/save_full`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), episodes: updatedEps }) });
             await sync();
         } finally { setLoad(false); setStatus(""); }
@@ -76,19 +74,27 @@ const App = () => {
         setStatus("ASSEMBLING MASTER EPISODE..."); setLoad(true);
         try {
             const res = await fetch(`${BASE_URL}/episode/stitch_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: activeEp, manifest: audioManifest }) });
-            const data = await res.json(); 
-            setMasterAudio(data.master_url);
-            await sync();
+            const data = await res.json(); setMasterAudio(data.master_url); await sync();
         } finally { setLoad(false); setStatus(""); }
     };
 
+    const deleteEpisode = async (idx) => {
+        if (!window.confirm("Permanent Pruning?")) return;
+        setLoad(true); setStatus("Deleting Episode...");
+        try { await fetch(`${BASE_URL}/season/${activeId}/episode/${idx}`, { method: 'DELETE' }); await sync(); setActiveEp(null); }
+        finally { setLoad(false); setStatus(""); }
+    };
+
+    const [nP, setNP] = useState({ name: '', role: 'Host', gender: CONFIG.G[0], description: "Investigative analyst.", trauma: '' });
+    const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 8, target_runtime: 15 });
+
     const activeSeason = seasons?.find(x => x.id === activeId);
-    
-    // VAULT AGGREGATOR
     const vaultEpisodes = seasons.reduce((acc, s) => {
-        const mastered = s.episodes.filter(e => e.master_audio_url).map(e => ({ ...e, seasonTitle: s.title, seasonId: s.id }));
+        const mastered = (s.episodes || []).filter(e => e.master_audio_url).map(e => ({ ...e, seasonTitle: s.title, seasonId: s.id }));
         return [...acc, ...mastered];
     }, []);
+
+    const getStats = (blocks) => { if (!blocks) return { chars: 0, words: 0, time: 0 }; const text = blocks.map(b => b.text).join(' '); const words = text.split(/\s+/).length; return { chars: text.length, words, time: (words / 150).toFixed(1) }; };
 
     return (
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden text-[11px] select-none">
@@ -101,19 +107,16 @@ const App = () => {
 
             <main className="flex-1 flex flex-col p-8 bg-[#0d0f11] relative overflow-hidden">
                 <div className="flex gap-4 mb-6 border-b border-slate-800 pb-6 shrink-0 items-center">
-                    <button onClick={() => { setView('library'); setActiveId(null); setActiveEp(null); }} className={`px-8 py-3 font-black uppercase rounded-lg transition-all ${view === 'library' && !activeId ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}>Library</button>
+                    <button onClick={() => { setView('library'); setActiveId(null); setActiveEp(null); setAudioManifest(null); setMasterAudio(null); }} className={`px-8 py-3 font-black uppercase rounded-lg transition-all ${view === 'library' && !activeId ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}>Library</button>
                     <button onClick={() => { setView('vault'); setActiveId(null); setActiveEp(null); }} className={`px-8 py-3 font-black uppercase rounded-lg transition-all flex items-center gap-2 ${view === 'vault' ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}><Radio size={14}/> Broadcast Vault</button>
                     {activeId && <div className="flex-1 text-teal-500 font-black uppercase italic truncate text-lg px-4 truncate"><ChevronRight className="inline mr-2"/>{activeSeason?.title}</div>}
                 </div>
 
                 {view === 'vault' ? (
                     <div className="grid grid-cols-1 gap-4 overflow-y-auto custom-scrollbar pr-4">
-                        <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-3xl mb-4">
-                            <h3 className="text-teal-500 font-black uppercase italic tracking-widest flex items-center gap-3"><Radio size={20}/> Produced Master Archives</h3>
-                            <p className="text-[10px] text-slate-500 uppercase mt-2 italic">Every finalized broadcast is permanently stored here.</p>
-                        </div>
+                        <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-3xl mb-4"><h3 className="text-teal-500 font-black uppercase italic tracking-widest flex items-center gap-3"><Radio size={20}/> Produced Master Archives</h3></div>
                         {vaultEpisodes.map((e, i) => (
-                            <div key={i} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] flex items-center gap-8 hover:border-teal-500 transition-all shadow-xl group">
+                            <div key={i} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] flex items-center gap-8 hover:border-teal-500 transition-all shadow-xl">
                                 <div className="w-16 h-16 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500"><Headphones size={32}/></div>
                                 <div className="flex-1">
                                     <div className="text-[9px] text-teal-600 font-black uppercase mb-1">{e.seasonTitle}</div>
@@ -152,13 +155,13 @@ const App = () => {
                                     </div>
                                 ) : activeSeason?.episodes?.[activeEp]?.full_script_blocks ? (
                                     <><textarea readOnly className="w-full h-[40vh] bg-slate-950/80 p-8 rounded-3xl border border-teal-900/20 text-teal-300 font-mono text-[9px] resize-none outline-none select-text custom-scrollbar" value={JSON.stringify(activeSeason.episodes[activeEp].full_script_blocks, null, 4)} /><div className="bg-teal-950/10 p-8 border border-teal-900/30 rounded-3xl shadow-xl"><h4 className="text-teal-500 font-black uppercase italic flex items-center gap-2 mb-4"><ClipboardCheck size={20}/> Post-Production Assessment</h4><p className="text-slate-300 uppercase text-[10px] leading-relaxed">{activeSeason.episodes[activeEp].assessment}</p></div></>
-                                ) : <div className="flex flex-col items-center justify-center h-full gap-8 opacity-40 hover:opacity-100 transition-opacity"><Mic2 size={80}/><button onClick={() => runProduction(activeEp)} className="px-12 py-5 bg-teal-500 text-black font-black uppercase text-[12px] rounded-2xl shadow-xl">Launch Master Engine</button></div>}
+                                ) : <div className="flex flex-col items-center justify-center h-full gap-8 opacity-40"><Mic2 size={80}/><button onClick={() => runProduction(activeEp)} className="px-12 py-5 bg-teal-500 text-black font-black uppercase text-[12px] rounded-2xl shadow-xl">Launch Master Engine</button></div>}
                             </div>
                         </div>
                     </div>
                 ) : !activeId ? (
                     <div className="grid grid-cols-2 gap-8 overflow-y-auto custom-scrollbar pr-4">{seasons.map(s => (
-                        <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-10 border border-slate-800 rounded-[2rem] cursor-pointer hover:border-teal-500 transition-all relative group h-fit shadow-2xl shadow-teal-500/5">
+                        <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-10 border border-slate-800 rounded-[2rem] cursor-pointer hover:border-teal-500 transition-all relative group h-fit shadow-2xl">
                             <button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/season/${s.id}`, {method:'DELETE'}).then(sync); }} className="absolute top-6 right-6 text-red-900 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={20}/></button>
                             <h4 className="text-white font-black uppercase italic text-2xl">{s.title}</h4>
                             <div className="mt-3 text-teal-600 font-black uppercase italic">{s.rel} | {s.runtime}m Target</div>
@@ -169,9 +172,10 @@ const App = () => {
                         <div className="bg-slate-900/50 p-10 border border-slate-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden group"><div className="absolute top-0 right-0 p-8 text-teal-900 group-hover:text-teal-500 transition-colors"><Info size={40}/></div><h3 className="text-teal-500 font-black uppercase italic tracking-widest mb-6 flex items-center gap-3"><BookOpen size={20}/> Factual Season Briefing</h3><p className="text-slate-200 text-lg leading-relaxed uppercase select-text italic relative z-10">{activeSeason?.description || "Researching factual data..."}</p></div>
                         <div className="grid grid-cols-3 gap-6 overflow-y-auto pr-4 custom-scrollbar">{activeSeason?.episodes?.map((e, idx) => (
                             <div key={idx} className="relative group">
-                                <div onClick={() => setActiveEp(idx)} className="p-8 border border-slate-800 bg-slate-900/30 rounded-[2rem] hover:border-teal-500 cursor-pointer text-center h-fit group transition-all shadow-lg shadow-teal-500/5">
+                                <div onClick={() => setActiveEp(idx)} className="p-8 border border-slate-800 bg-slate-900/30 rounded-[2rem] hover:border-teal-500 cursor-pointer text-center h-fit group transition-all shadow-lg">
                                     <div className="text-[10px] text-teal-800 font-black uppercase mb-3 italic">Node_{idx + 1}</div><h5 className="text-white font-black uppercase italic text-lg mb-4">{e?.title || "Researching..."}</h5>{e.full_script_blocks && <div className="mt-4 text-teal-500 text-[10px] font-black uppercase italic flex items-center justify-center gap-2"><Zap size={12}/> json_locked</div>}
                                 </div>
+                                <button onClick={(e) => { e.stopPropagation(); deleteEpisode(idx); }} className="absolute top-4 right-4 text-red-900 opacity-0 group-hover:opacity-100 transition-all hover:text-red-500"><Trash2 size={16}/></button>
                             </div>
                         ))}</div>
                     </div>
@@ -185,7 +189,7 @@ const App = () => {
                     <select className="bg-slate-900/50 p-4 border border-slate-800 text-teal-500 rounded-2xl outline-none uppercase font-black" value={nP.gender} onChange={e => setNP({...nP, gender: e.target.value})}>{CONFIG.G.map(g => <option key={g} value={g}>{g}</option>)}</select>
                     <select className="bg-slate-900/50 p-4 border border-slate-800 text-teal-500 rounded-2xl outline-none uppercase font-black" value={nP.role} onChange={e => setNP({...nP, role: e.target.value})}><option value="Host">Host</option><option value="Analyst">Analyst</option><option value="Skeptic">Skeptic</option></select>
                 </div>
-                <button onClick={async () => { setLoad(true); await fetch(`${BASE_URL}/persona/create`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(nP)}); await sync(); setLoad(false); }} disabled={!nP.name || load} className="w-full py-5 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl hover:bg-white transition-all">Commit DNA</button>
+                <button onClick={async () => { setLoad(true); await fetch(`${BASE_URL}/persona/create`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(nP)}); await sync(); setLoad(false); }} disabled={!nP.name || load} className="w-full py-5 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl hover:bg-white transition-all">Commit Subject DNA</button>
                 <div className="flex flex-wrap gap-4 pt-6 border-t border-slate-900">{personas?.map(p => <div key={p.id} className="relative group"><img src={p.portrait} onClick={() => setViewPersona(p)} className="w-14 h-14 rounded-xl border-2 border-slate-800 hover:border-teal-500 cursor-pointer bg-black shadow-xl shadow-teal-500/5" alt="p" /><button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/persona/${p.id}`, {method:'DELETE'}).then(sync); }} className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500"><Trash2 size={10}/></button></div>)}</div></div>
 
                 <div className="space-y-6 border-t border-slate-800 pt-10"><h3 className="text-teal-500 font-black uppercase border-b border-teal-900/30 pb-3 tracking-widest italic flex items-center gap-2"><Archive size={18}/> Season Architect</h3>
