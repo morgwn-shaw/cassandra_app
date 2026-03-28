@@ -12,16 +12,24 @@ const App = () => {
     const [activeId, setActiveId] = useState(null); 
     const [activeEp, setActiveEp] = useState(null);
     const [viewPersona, setViewPersona] = useState(null);
-    const [seasons, setSeasons] = useState([]); // Array default
-    const [personas, setPersonas] = useState([]); // Array default
+    const [seasons, setSeasons] = useState([]); 
+    const [personas, setPersonas] = useState([]); 
     const [load, setLoad] = useState(false);
     const [status, setStatus] = useState("");
     const [audioManifest, setAudioManifest] = useState(null);
     const [masterAudio, setMasterAudio] = useState(null);
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V213_STABLE_BOOT", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V215_RESTORED_READY", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => setLogs(p => [...p, { t: new Date().toLocaleTimeString(), m: typeof m === 'string' ? m : JSON.stringify(m), type }].slice(-50));
+
+    const checkSystem = async () => {
+        try {
+            const res = await fetch(`${BASE_URL}/system/status`);
+            const data = await res.json();
+            addLog(`SYS: Python ${data.python.split(' ')[0]} | HOSTS: ${data.persona_count} | SEASONS: ${data.season_count}`, "system");
+        } catch (e) { addLog("PROBE_FAIL", "error"); }
+    };
 
     const sync = useCallback(async () => {
         try {
@@ -35,10 +43,9 @@ const App = () => {
         } catch (e) { addLog("SYNC_FAIL", "error"); }
     }, []);
 
-    useEffect(() => { sync(); }, [sync]);
+    useEffect(() => { sync(); checkSystem(); }, [sync]);
     useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [logs]);
 
-    // Safety Chaining to prevent crash
     const activeSeason = seasons?.find(x => x.id === activeId);
 
     const scoutAudio = async (epIdx) => {
@@ -53,15 +60,32 @@ const App = () => {
 
     useEffect(() => { if (activeEp !== null) scoutAudio(activeEp); }, [activeEp, activeId]);
 
+    const createSeason = async () => {
+        if (!nS.topic || nS.host_ids.length < 2) return;
+        setLoad(true); try {
+            setStatus("Establishing Skeleton...");
+            const r1 = await fetch(`${BASE_URL}/season/init`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(nS) });
+            const s = await r1.json();
+            setStatus("Factual Research...");
+            await fetch(`${BASE_URL}/season/research`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
+            setStatus("Lore Generation...");
+            await fetch(`${BASE_URL}/season/lore`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: s.id }) });
+            await sync();
+        } finally { setLoad(false); setStatus(""); }
+    };
+
     const runProduction = async (epIdx) => {
         setLoad(true); let allBlocks = [];
         try {
             for (let i = 1; i <= 6; i++) {
-                setStatus(`PRODUCING ACT ${i} / 6...`);
+                setStatus(`ACT ${i}: ENFORCING PROSODY...`);
                 const response = await fetch(`${BASE_URL}/episode/act_script`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, act_num: i, previous_script: JSON.stringify(allBlocks.slice(-8)) }) });
                 const data = await response.json(); allBlocks = [...allBlocks, ...(data.script_blocks || [])];
             }
-            const updatedEps = [...activeSeason.episodes]; updatedEps[epIdx].full_script_blocks = allBlocks;
+            setStatus("Reviewing Forensic Gospel...");
+            const resAss = await fetch(`${BASE_URL}/episode/assess`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, sample: JSON.stringify(allBlocks.slice(0, 5)) }) });
+            const assData = await resAss.json();
+            const updatedEps = [...activeSeason.episodes]; updatedEps[epIdx].full_script_blocks = allBlocks; updatedEps[epIdx].assessment = assData.assessment;
             await fetch(`${BASE_URL}/episode/save_full`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), episodes: updatedEps }) });
             await sync();
         } finally { setLoad(false); setStatus(""); }
@@ -76,7 +100,7 @@ const App = () => {
     };
 
     const stitchAudio = async () => {
-        setStatus("STITCHING MASTER..."); setLoad(true);
+        setStatus("STITCHING CINEMATIC MASTER..."); setLoad(true);
         try {
             const res = await fetch(`${BASE_URL}/episode/stitch_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: activeEp, manifest: audioManifest }) });
             const data = await res.json(); if (data.error) addLog(data.error, "error"); else { setMasterAudio(data.master_url); await sync(); }
@@ -86,7 +110,6 @@ const App = () => {
     const [nP, setNP] = useState({ name: '', role: 'Host', gender: CONFIG.G[0], description: "", trauma: '' });
     const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 8, target_runtime: 15 });
 
-    // Robust Vault Calculation
     const vaultEpisodes = Array.isArray(seasons) ? seasons.reduce((acc, s) => {
         const mastered = (s.episodes || []).filter(e => e?.master_audio_url).map(e => ({ ...e, seasonTitle: s?.title, seasonId: s?.id }));
         return [...acc, ...mastered];
@@ -110,7 +133,7 @@ const App = () => {
 
                 {view === 'vault' ? (
                     <div className="grid grid-cols-1 gap-4 overflow-y-auto custom-scrollbar pr-4">
-                        <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-3xl mb-4"><h3 className="text-teal-500 font-black uppercase italic tracking-widest flex items-center gap-3"><Radio size={20}/> Broadcast Archive</h3></div>
+                        <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-3xl mb-4"><h3 className="text-teal-500 font-black uppercase italic tracking-widest flex items-center gap-3"><Radio size={20}/> Produced Master Archive</h3></div>
                         {vaultEpisodes.map((e, i) => (
                             <div key={i} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] flex items-center gap-8 hover:border-teal-500 transition-all shadow-xl group">
                                 <div className="w-16 h-16 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500 group-hover:bg-teal-500 group-hover:text-black transition-all"><Headphones size={32}/></div>
