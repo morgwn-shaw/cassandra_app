@@ -16,7 +16,7 @@ const App = () => {
     const [status, setStatus] = useState("");
     const [audioManifest, setAudioManifest] = useState(null);
     const [masterAudio, setMasterAudio] = useState(null);
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V217_RESTORED_READY", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V219_BINGE_READY", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => setLogs(p => [...p, { t: new Date().toLocaleTimeString(), m: typeof m === 'string' ? m : JSON.stringify(m), type }].slice(-50));
@@ -41,9 +41,8 @@ const App = () => {
 
     const scoutAudio = async (epIdx) => {
         if (!activeSeason || !activeSeason.episodes?.[epIdx]) return;
-        const ep = activeSeason.episodes[epIdx];
         try {
-            const res = await fetch(`${BASE_URL}/episode/check_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: epIdx, blocks_count: ep.full_script_blocks?.length || 0 }) });
+            const res = await fetch(`${BASE_URL}/episode/check_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: epIdx, blocks_count: activeSeason.episodes[epIdx].full_script_blocks?.length || 0 }) });
             const data = await res.json();
             setAudioManifest(data.audio_manifest); setMasterAudio(data.master_url);
         } catch (e) { console.error("Scout failed"); }
@@ -55,11 +54,11 @@ const App = () => {
         setLoad(true); let allBlocks = [];
         try {
             for (let i = 1; i <= 6; i++) {
-                setStatus(`ACT ${i}: INJECTING BACKLOGS...`);
-                const response = await fetch(`${BASE_URL}/episode/act_script`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, act_num: i, previous_script: JSON.stringify(allBlocks.slice(-8)) }) });
+                setStatus(`PRODUCING ACT ${i} / 6...`);
+                const response = await fetch(`${BASE_URL}/episode/act_script`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, act_num: i }) });
                 const data = await response.json(); allBlocks = [...allBlocks, ...(data.script_blocks || [])];
             }
-            setStatus("Forensic Quality Assessment...");
+            setStatus("Forensic Assessment...");
             const resAss = await fetch(`${BASE_URL}/episode/assess`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, sample: JSON.stringify(allBlocks.slice(0, 15)) }) });
             const review = await resAss.json();
             const updatedEps = [...activeSeason.episodes]; updatedEps[epIdx].full_script_blocks = allBlocks; updatedEps[epIdx].review = review;
@@ -105,12 +104,13 @@ const App = () => {
                 <div className="flex gap-4 mb-6 border-b border-slate-800 pb-6 shrink-0 items-center">
                     <button onClick={() => { setView('library'); setActiveId(null); setActiveEp(null); setAudioManifest(null); setMasterAudio(null); setViewLore(false); }} className={`px-8 py-3 font-black uppercase rounded-lg transition-all ${view === 'library' && !activeId ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}>Library</button>
                     <button onClick={() => { setView('vault'); setActiveId(null); setActiveEp(null); setViewLore(false); }} className={`px-8 py-3 font-black uppercase rounded-lg transition-all flex items-center gap-2 ${view === 'vault' ? 'bg-teal-500 text-black shadow-lg' : 'bg-slate-800'}`}><Radio size={14}/> Vault</button>
-                    {activeId && <div className="flex-1 text-teal-500 font-black uppercase italic truncate text-lg px-4"><ChevronRight className="inline mr-2"/>{activeSeason?.title}</div>}
+                    {activeId && <div className="flex-1 text-teal-500 font-black uppercase italic truncate text-lg px-4 truncate"><ChevronRight className="inline mr-2"/>{activeSeason?.title}</div>}
                     {activeId && !activeEp && <button onClick={() => setViewLore(true)} className="px-6 py-3 bg-teal-950/20 border border-teal-500/30 text-teal-500 font-black uppercase rounded-lg flex items-center gap-2 hover:bg-teal-500 hover:text-black transition-all"><Scroll size={14}/> View Lore</button>}
                 </div>
 
                 {view === 'vault' ? (
                     <div className="grid grid-cols-1 gap-4 overflow-y-auto custom-scrollbar pr-4">
+                        <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-3xl mb-4 text-teal-500 font-black uppercase italic tracking-widest flex items-center gap-3"><Radio size={20}/> Produced Master Archive</div>
                         {vaultEpisodes.map((e, i) => (
                             <div key={i} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] flex items-center gap-8 hover:border-teal-500 transition-all shadow-xl group">
                                 <div className="w-16 h-16 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500 group-hover:bg-teal-500 group-hover:text-black transition-all"><Headphones size={32}/></div>
@@ -145,11 +145,11 @@ const App = () => {
                                 
                                 {activeSeason.episodes[activeEp]?.review && (
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4">
+                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-inner">
                                             <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><CheckCircle size={12}/> Strengths</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.strengths}</p></div>
                                             <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><AlertTriangle size={12}/> Lore Injection</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.past_lore_injections}</p></div>
                                         </div>
-                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4">
+                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-inner">
                                             <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><Activity size={12}/> Evolution</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.future_lore_progress}</p></div>
                                             <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><Sparkles size={12}/> Adherence</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.lore_adherence}</p></div>
                                         </div>
@@ -187,12 +187,12 @@ const App = () => {
                         <button onClick={() => setViewLore(false)} className="text-teal-500 font-black uppercase italic mb-4 flex items-center gap-2 hover:text-white transition-all shrink-0"><ChevronRight className="rotate-180"/> Back to Episodes</button>
                         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8 pr-4">
                             <div className="bg-slate-900/40 p-10 border border-slate-800 rounded-[3rem] shadow-xl">
-                                <h3 className="text-teal-500 font-black uppercase italic text-lg mb-6 flex items-center gap-3"><History size={20}/> Shared Historical Lore</h3>
-                                <div className="grid grid-cols-2 gap-4">{activeSeason?.shared_history?.map((h, i) => <div key={i} className="p-4 bg-black/40 rounded-2xl border border-teal-900/10 italic text-slate-300">[{i+1}] {h}</div>)}</div>
+                                <h3 className="text-teal-500 font-black uppercase italic text-lg mb-6 flex items-center gap-3"><History size={20}/> Shared Persona Lore</h3>
+                                <div className="grid grid-cols-2 gap-4">{(activeSeason?.shared_history || []).map((h, i) => <div key={i} className="p-4 bg-black/40 rounded-2xl border border-teal-900/10 italic text-slate-300">[{i+1}] {h}</div>)}</div>
                             </div>
                             <div className="bg-slate-900/40 p-10 border border-slate-800 rounded-[3rem] shadow-xl">
-                                <h3 className="text-teal-500 font-black uppercase italic text-lg mb-6 flex items-center gap-3"><Sparkles size={20}/> Future Evolution Arc</h3>
-                                <p className="text-slate-200 text-lg leading-relaxed italic">{activeSeason?.future_lore}</p>
+                                <h3 className="text-teal-500 font-black uppercase italic text-lg mb-6 flex items-center gap-3"><Sparkles size={20}/> Relationship Evolution Arc</h3>
+                                <p className="text-slate-200 text-lg leading-relaxed italic uppercase tracking-tighter">{activeSeason?.future_lore || "No future lore recorded."}</p>
                             </div>
                         </div>
                     </div>
@@ -205,12 +205,12 @@ const App = () => {
                                 {episodeHosts.map(p => (
                                     <div key={p.id} className="flex items-center gap-4 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => setViewPersona(p)}>
                                         <img src={p.portrait} className="w-12 h-12 rounded-xl bg-black border border-teal-500/30 shadow-lg" />
-                                        <div><div className="text-white font-black uppercase italic text-[12px]">{p.name}</div><div className="text-teal-600 font-black uppercase text-[9px]">{p.dna.mbti} Analyst</div></div>
+                                        <div><div className="text-white font-black uppercase italic text-[12px]">{p.name}</div><div className="text-teal-600 font-black uppercase text-[9px]">{p.dna?.mbti || "INTJ"} Analyst</div></div>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-6 overflow-y-auto pr-4 custom-scrollbar h-full">{(activeSeason?.episodes || []).map((e, idx) => (
+                        <div className="grid grid-cols-3 gap-6 overflow-y-auto pr-4 custom-scrollbar h-full pb-10">{(activeSeason?.episodes || []).map((e, idx) => (
                             <div key={idx} onClick={() => setActiveEp(idx)} className="p-8 border border-slate-800 bg-slate-900/30 rounded-[2rem] hover:border-teal-500 cursor-pointer text-center h-fit group transition-all shadow-lg">
                                 <h5 className="text-white font-black uppercase italic text-lg mb-4 truncate">{e?.title || "Researching..."}</h5>
                                 {e.master_audio_url && <div className="mt-4 text-teal-500 text-[10px] font-black uppercase italic flex items-center justify-center gap-2"><Headphones size={12}/> mastered</div>}
