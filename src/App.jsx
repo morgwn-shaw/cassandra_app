@@ -16,7 +16,7 @@ const App = () => {
     const [status, setStatus] = useState("");
     const [audioManifest, setAudioManifest] = useState(null);
     const [masterAudio, setMasterAudio] = useState(null);
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V219_BINGE_READY", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V220_IRONCLAD_BOOT", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => setLogs(p => [...p, { t: new Date().toLocaleTimeString(), m: typeof m === 'string' ? m : JSON.stringify(m), type }].slice(-50));
@@ -54,11 +54,11 @@ const App = () => {
         setLoad(true); let allBlocks = [];
         try {
             for (let i = 1; i <= 6; i++) {
-                setStatus(`PRODUCING ACT ${i} / 6...`);
-                const response = await fetch(`${BASE_URL}/episode/act_script`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, act_num: i }) });
+                setStatus(`ACT ${i}: WEAVING PERSONA LORE...`);
+                const response = await fetch(`${BASE_URL}/episode/act_script`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, act_num: i, previous_script: JSON.stringify(allBlocks.slice(-8)) }) });
                 const data = await response.json(); allBlocks = [...allBlocks, ...(data.script_blocks || [])];
             }
-            setStatus("Forensic Assessment...");
+            setStatus("Reviewing Forensic Gospel...");
             const resAss = await fetch(`${BASE_URL}/episode/assess`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, sample: JSON.stringify(allBlocks.slice(0, 15)) }) });
             const review = await resAss.json();
             const updatedEps = [...activeSeason.episodes]; updatedEps[epIdx].full_script_blocks = allBlocks; updatedEps[epIdx].review = review;
@@ -68,7 +68,7 @@ const App = () => {
     };
 
     const generateAudio = async () => {
-        setStatus("SONIC BURST DISPATCH..."); setLoad(true);
+        setStatus("IRONCLAD SEQUENTIAL DISPATCH..."); setLoad(true);
         try {
             const res = await fetch(`${BASE_URL}/episode/generate_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: activeEp, blocks: activeSeason.episodes[activeEp].full_script_blocks }) });
             const data = await res.json(); setAudioManifest(data.audio_manifest);
@@ -83,13 +83,13 @@ const App = () => {
         } finally { setLoad(false); setStatus(""); }
     };
 
-    const [nP, setNP] = useState({ name: '', role: 'Host', gender: CONFIG.G[0], description: "", trauma: '' });
-    const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 8, target_runtime: 15 });
-
-    const vaultEpisodes = seasons.reduce((acc, s) => {
+    const vaultEpisodes = Array.isArray(seasons) ? seasons.reduce((acc, s) => {
         const mastered = (s.episodes || []).filter(e => e?.master_audio_url).map(e => ({ ...e, seasonTitle: s?.title, seasonId: s?.id }));
         return [...acc, ...mastered];
-    }, []);
+    }, []) : [];
+
+    const [nP, setNP] = useState({ name: '', role: 'Host', gender: CONFIG.G[0], description: "", trauma: '' });
+    const [nS, setNS] = useState({ topic: '', relationship: CONFIG.D[0], host_ids: [], episodes_count: 8, target_runtime: 15 });
 
     return (
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden text-[11px] select-none">
@@ -125,7 +125,7 @@ const App = () => {
                             <div className="flex justify-between items-center mb-6 shrink-0">
                                 <div className="flex gap-4">
                                     <button onClick={() => { setActiveEp(null); setAudioManifest(null); setMasterAudio(null); }} className="text-slate-500 hover:text-white uppercase font-black italic text-[10px]">[ Close ]</button>
-                                    {!audioManifest && activeSeason?.episodes[activeEp]?.full_script_blocks && <button onClick={generateAudio} className="px-6 py-2 bg-teal-500 text-black font-black uppercase rounded-lg text-[9px] flex items-center gap-2 shadow-xl"><Volume2 size={12}/> Synthesize Sonic</button>}
+                                    {!audioManifest && activeSeason?.episodes[activeEp]?.full_script_blocks && <button onClick={generateAudio} className="px-6 py-2 bg-teal-500 text-black font-black uppercase rounded-lg text-[9px] flex items-center gap-2 shadow-xl"><Volume2 size={12}/> Synthesize Ironclad</button>}
                                     {audioManifest && !masterAudio && <button onClick={stitchAudio} className="px-6 py-2 bg-teal-500 text-black font-black uppercase rounded-lg text-[9px] flex items-center gap-2 animate-pulse"><Wand2 size={12}/> Assemble Master</button>}
                                 </div>
                                 {masterAudio && <div className="bg-teal-950/20 px-6 py-2 rounded-xl border border-teal-500/30 flex items-center gap-4"><Headphones className="text-teal-500" size={16}/><audio controls className="h-6 accent-teal-500 w-64"><source src={`https://shadow-cassandrafiles.pythonanywhere.com${masterAudio}`} type="audio/mpeg"/></audio></div>}
@@ -134,7 +134,7 @@ const App = () => {
                             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-6 pr-2">
                                 {activeSeason.episodes[activeEp]?.review && (
                                     <div className="grid grid-cols-4 gap-4 mb-6">
-                                        {Object.entries(activeSeason.episodes[activeEp].review.scores).map(([k, v]) => (
+                                        {Object.entries(activeSeason.episodes[activeEp].review.scores || {}).map(([k, v]) => (
                                             <div key={k} className="bg-slate-900/50 p-4 border border-slate-800 rounded-2xl text-center">
                                                 <div className="text-[9px] text-teal-600 font-black uppercase mb-1">{k}</div>
                                                 <div className="text-2xl font-black text-white italic">{v}/10</div>
@@ -145,11 +145,11 @@ const App = () => {
                                 
                                 {activeSeason.episodes[activeEp]?.review && (
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-inner">
+                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4">
                                             <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><CheckCircle size={12}/> Strengths</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.strengths}</p></div>
                                             <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><AlertTriangle size={12}/> Lore Injection</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.past_lore_injections}</p></div>
                                         </div>
-                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-inner">
+                                        <div className="bg-black/40 border border-slate-800 p-6 rounded-3xl space-y-4">
                                             <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><Activity size={12}/> Evolution</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.future_lore_progress}</p></div>
                                             <div><h5 className="text-teal-500 font-black uppercase text-[9px] flex items-center gap-2 mb-2"><Sparkles size={12}/> Adherence</h5><p className="italic text-slate-300">{activeSeason.episodes[activeEp].review.lore_adherence}</p></div>
                                         </div>
