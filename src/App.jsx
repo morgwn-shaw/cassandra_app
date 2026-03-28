@@ -16,7 +16,7 @@ const App = () => {
     const [status, setStatus] = useState("");
     const [audioManifest, setAudioManifest] = useState(null);
     const [masterAudio, setMasterAudio] = useState(null);
-    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V205_MASTER_READY", type: "system" }]);
+    const [logs, setLogs] = useState([{ t: new Date().toLocaleTimeString(), m: "APEX_V205_STABLE_MASTER", type: "system" }]);
 
     const logRef = useRef(null);
     const addLog = (m, type = "info") => setLogs(p => [...p, { t: new Date().toLocaleTimeString(), m: typeof m === 'string' ? m : JSON.stringify(m), type }].slice(-50));
@@ -32,8 +32,9 @@ const App = () => {
     useEffect(() => { sync(); }, [sync]);
 
     const scoutAudio = async (epIdx) => {
-        if (!activeSeason || !activeSeason.episodes[epIdx]) return;
-        const ep = activeSeason.episodes[epIdx];
+        const season = seasons.find(s => s.id === activeId);
+        if (!season || !season.episodes[epIdx]) return;
+        const ep = season.episodes[epIdx];
         if (!ep.full_script_blocks) return;
         try {
             const res = await fetch(`${BASE_URL}/episode/check_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: epIdx, blocks_count: ep.full_script_blocks.length }) });
@@ -53,9 +54,11 @@ const App = () => {
                 const response = await fetch(`${BASE_URL}/episode/act_script`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, act_num: i, previous_script: JSON.stringify(allBlocks.slice(-8)) }) });
                 const data = await response.json(); allBlocks = [...allBlocks, ...(data.script_blocks || [])];
             }
+            setStatus("Showrunner Review...");
             const resAss = await fetch(`${BASE_URL}/episode/assess`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), ep_idx: epIdx, sample: JSON.stringify(allBlocks.slice(0, 5)) }) });
             const assData = await resAss.json();
-            const updatedEps = [...activeSeason.episodes]; updatedEps[epIdx].full_script_blocks = allBlocks; updatedEps[epIdx].assessment = assData.assessment;
+            const curS = seasons.find(s => s.id === activeId); const updatedEps = [...curS.episodes];
+            updatedEps[epIdx].full_script_blocks = allBlocks; updatedEps[epIdx].assessment = assData.assessment;
             await fetch(`${BASE_URL}/episode/save_full`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId.toString(), episodes: updatedEps }) });
             await sync();
         } finally { setLoad(false); setStatus(""); }
@@ -64,8 +67,10 @@ const App = () => {
     const generateAudio = async () => {
         setStatus("AURA DISPATCHER ACTIVE..."); setLoad(true);
         try {
-            const res = await fetch(`${BASE_URL}/episode/generate_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: activeEp, blocks: activeSeason.episodes[activeEp].full_script_blocks }) });
-            const data = await res.json(); setAudioManifest(data.audio_manifest);
+            const ep = activeSeason.episodes[activeEp];
+            const res = await fetch(`${BASE_URL}/episode/generate_audio`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ season_id: activeId, ep_idx: activeEp, blocks: ep.full_script_blocks }) });
+            const data = await res.json(); 
+            if (data.error) addLog(data.error, "error"); else setAudioManifest(data.audio_manifest);
         } finally { setLoad(false); setStatus(""); }
     };
 
@@ -93,6 +98,8 @@ const App = () => {
         return [...acc, ...mastered];
     }, []);
 
+    const getStats = (blocks) => { if (!blocks) return { chars: 0, words: 0, time: 0 }; const text = blocks.map(b => b.text).join(' '); const words = text.split(/\s+/).length; return { chars: text.length, words, time: (words / 150).toFixed(1) }; };
+
     return (
         <div className="h-screen w-screen font-mono flex bg-[#0a0c0e] text-slate-400 overflow-hidden text-[11px] select-none">
             {load && <div className="fixed inset-0 bg-black/90 z-[500] flex flex-col items-center justify-center text-teal-500 backdrop-blur-md font-black uppercase tracking-[0.4em]"><Activity className="animate-pulse mb-6" size={64}/>{status}</div>}
@@ -113,8 +120,8 @@ const App = () => {
                     <div className="grid grid-cols-1 gap-4 overflow-y-auto custom-scrollbar pr-4">
                         <div className="bg-teal-950/10 p-6 border border-teal-900/30 rounded-3xl mb-4"><h3 className="text-teal-500 font-black uppercase italic tracking-widest flex items-center gap-3"><Radio size={20}/> Produced Master Archives</h3></div>
                         {vaultEpisodes.map((e, i) => (
-                            <div key={i} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] flex items-center gap-8 hover:border-teal-500 transition-all shadow-xl">
-                                <div className="w-16 h-16 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500"><Headphones size={32}/></div>
+                            <div key={i} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] flex items-center gap-8 hover:border-teal-500 transition-all shadow-xl group">
+                                <div className="w-16 h-16 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500 group-hover:bg-teal-500 group-hover:text-black transition-all"><Headphones size={32}/></div>
                                 <div className="flex-1">
                                     <div className="text-[9px] text-teal-600 font-black uppercase mb-1">{e.seasonTitle}</div>
                                     <h4 className="text-white font-black uppercase text-xl italic">{e.title}</h4>
@@ -146,7 +153,10 @@ const App = () => {
                                         {audioManifest.map((a, i) => (
                                             <div key={i} className="p-4 bg-slate-900/50 border border-slate-800 rounded-2xl flex items-center gap-6 hover:border-teal-500 transition-all group">
                                                 <div className="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-500 font-black italic">{i+1}</div>
-                                                <div className="flex-1"><div className="text-[9px] text-teal-600 font-black uppercase mb-1">{a.name}</div><audio controls className="h-8 accent-teal-500 w-full max-w-sm"><source src={`https://shadow-cassandrafiles.pythonanywhere.com${a.url}`} type="audio/mpeg"/></audio></div>
+                                                <div className="flex-1">
+                                                    <div className="text-[9px] text-teal-600 font-black uppercase mb-1">{a.name}</div>
+                                                    <audio controls className="h-8 accent-teal-500 w-full max-w-sm"><source src={`https://shadow-cassandrafiles.pythonanywhere.com${a.url}`} type="audio/mpeg"/></audio>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -158,7 +168,7 @@ const App = () => {
                     </div>
                 ) : !activeId ? (
                     <div className="grid grid-cols-2 gap-8 overflow-y-auto custom-scrollbar pr-4">{seasons.map(s => (
-                        <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-10 border border-slate-800 rounded-[2rem] cursor-pointer hover:border-teal-500 transition-all relative group h-fit shadow-2xl">
+                        <div key={s.id} onClick={() => setActiveId(s.id)} className="bg-[#1c1f23] p-10 border border-slate-800 rounded-[2rem] cursor-pointer hover:border-teal-500 transition-all relative group h-fit shadow-2xl shadow-teal-500/5">
                             <button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/season/${s.id}`, {method:'DELETE'}).then(sync); }} className="absolute top-6 right-6 text-red-900 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={20}/></button>
                             <h4 className="text-white font-black uppercase italic text-2xl">{s.title}</h4>
                             <div className="mt-3 text-teal-600 font-black uppercase italic">{s.rel} | {s.runtime}m Target</div>
@@ -169,7 +179,7 @@ const App = () => {
                         <div className="bg-slate-900/50 p-10 border border-slate-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden group"><div className="absolute top-0 right-0 p-8 text-teal-900 group-hover:text-teal-500 transition-colors"><Info size={40}/></div><h3 className="text-teal-500 font-black uppercase italic tracking-widest mb-6 flex items-center gap-3"><BookOpen size={20}/> Factual Season Briefing</h3><p className="text-slate-200 text-lg leading-relaxed uppercase select-text italic relative z-10">{activeSeason?.description || "Researching factual data..."}</p></div>
                         <div className="grid grid-cols-3 gap-6 overflow-y-auto pr-4 custom-scrollbar">{activeSeason?.episodes?.map((e, idx) => (
                             <div key={idx} className="relative group">
-                                <div onClick={() => setActiveEp(idx)} className="p-8 border border-slate-800 bg-slate-900/30 rounded-[2rem] hover:border-teal-500 cursor-pointer text-center h-fit group transition-all shadow-lg">
+                                <div onClick={() => setActiveEp(idx)} className="p-8 border border-slate-800 bg-slate-900/30 rounded-[2rem] hover:border-teal-500 cursor-pointer text-center h-fit group transition-all shadow-lg shadow-teal-500/5">
                                     <div className="text-[10px] text-teal-800 font-black uppercase mb-3 italic">Node_{idx + 1}</div><h5 className="text-white font-black uppercase italic text-lg mb-4">{e?.title || "Researching..."}</h5>{e.full_script_blocks && <div className="mt-4 text-teal-500 text-[10px] font-black uppercase italic flex items-center justify-center gap-2"><Zap size={12}/> json_locked</div>}
                                 </div>
                                 <button onClick={(e) => { e.stopPropagation(); deleteEpisode(idx); }} className="absolute top-4 right-4 text-red-900 opacity-0 group-hover:opacity-100 transition-all hover:text-red-500"><Trash2 size={16}/></button>
@@ -184,10 +194,9 @@ const App = () => {
                 <input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-white font-bold rounded-xl outline-none focus:border-teal-500 uppercase text-[12px]" placeholder="NAME" value={nP.name} onChange={e => setNP({...nP, name: e.target.value})} /><textarea className="w-full bg-slate-900/50 p-4 border border-slate-800 text-slate-300 rounded-xl outline-none focus:border-teal-500 uppercase text-[10px] h-32 leading-relaxed" placeholder="DESCRIPTION" value={nP.description} onChange={e => setNP({...nP, description: e.target.value})} /><input className="w-full bg-slate-900/50 p-4 border border-slate-800 text-teal-300 rounded-xl outline-none focus:border-teal-500 uppercase text-[10px]" placeholder="CORE TRAUMA (OPTIONAL)" value={nP.trauma} onChange={e => setNP({...nP, trauma: e.target.value})} />
                 <div className="grid grid-cols-2 gap-4">
                     <select className="bg-slate-900/50 p-4 border border-slate-800 text-teal-500 rounded-2xl outline-none uppercase font-black" value={nP.gender} onChange={e => setNP({...nP, gender: e.target.value})}>{CONFIG.G.map(g => <option key={g} value={g}>{g}</option>)}</select>
-                    <select className="bg-slate-900/50 p-4 border border-slate-800 text-teal-500 rounded-2xl outline-none uppercase font-black" value={nP.role} onChange={e => setNP({...nP, role: e.target.value})}><option value="Host">Host</option><option value="Analyst">Analyst</option><option value="Skeptic">Skeptic</option></select>
+                    <button onClick={createPersona} disabled={!nP.name || load} className="w-full py-5 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl hover:bg-white transition-all">Commit Subject DNA</button>
                 </div>
-                <button onClick={createPersona} disabled={!nP.name || load} className="w-full py-5 bg-teal-500 text-black font-black uppercase rounded-[1.5rem] shadow-2xl hover:bg-white transition-all">Commit DNA</button>
-                <div className="flex flex-wrap gap-4 pt-6 border-t border-slate-900">{personas?.map(p => <div key={p.id} className="relative group"><img src={p.portrait} onClick={() => setViewPersona(p)} className="w-14 h-14 rounded-xl border-2 border-slate-800 hover:border-teal-500 cursor-pointer bg-black shadow-xl" alt="p" /><button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/persona/${p.id}`, {method:'DELETE'}).then(sync); }} className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500"><Trash2 size={10}/></button></div>)}</div></div>
+                <div className="flex flex-wrap gap-4 pt-6 border-t border-slate-900">{personas?.map(p => <div key={p.id} className="relative group"><img src={p.portrait} onClick={() => setViewPersona(p)} className="w-14 h-14 rounded-xl border-2 border-slate-800 hover:border-teal-500 cursor-pointer bg-black shadow-xl shadow-teal-500/5" alt="p" /><button onClick={(e) => { e.stopPropagation(); fetch(`${BASE_URL}/delete/persona/${p.id}`, {method:'DELETE'}).then(sync); }} className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500"><Trash2 size={10}/></button></div>)}</div></div>
 
                 <div className="space-y-6 border-t border-slate-800 pt-10"><h3 className="text-teal-500 font-black uppercase border-b border-teal-900/30 pb-3 tracking-widest italic flex items-center gap-2"><Archive size={18}/> Season Architect</h3>
                 <input className="w-full bg-slate-900/50 p-5 border border-slate-800 text-white font-bold rounded-2xl outline-none focus:border-teal-500 uppercase text-[12px]" placeholder="TOPIC" value={nS.topic} onChange={e => setNS({...nS, topic: e.target.value})} />
